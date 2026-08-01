@@ -442,9 +442,7 @@ class OrderController extends Controller
 
             $alreadyPaid = $existingPayments->reduce(function($acc, $p) {
                 $val = (float)($p->paid_value ?? $p->value ?? 0);
-                $method = mb_strtoupper($p->payment_method ?? '');
-                $isCash = str_contains($method, 'PIX') || str_contains($method, 'DINHEIRO') || str_contains($method, 'DÉBITO') || str_contains($method, 'DEBITO');
-                if ($p->status === 'P' || $p->paid_at || $isCash) {
+                if ($p->status === 'P' || !is_null($p->paid_at)) {
                     return $acc + ($val > 0 ? $val : (float)$p->value);
                 }
                 return $acc;

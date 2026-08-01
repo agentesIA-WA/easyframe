@@ -15,9 +15,7 @@ export default function SettleOrderModal({ isOpen, onClose, order, onSuccess, no
 
     const alreadyPaid = (order.payments || []).reduce((acc, p) => {
         const val = parseFloat(p.paid_value || p.value || 0);
-        const method = String(p.payment_method || '').toUpperCase();
-        const isCash = method.includes('PIX') || method.includes('DINHEIRO') || method.includes('DÉBITO') || method.includes('DEBITO');
-        if (p.status === 'P' || p.paid_at || isCash) {
+        if (p.status === 'P' || p.paid_at) {
             return acc + (val > 0 ? val : parseFloat(p.value || 0));
         }
         return acc;
@@ -36,19 +34,42 @@ export default function SettleOrderModal({ isOpen, onClose, order, onSuccess, no
                 const defaultPmId = methods.length > 0 ? methods[0].id : '';
 
                 if (remainingBalance > 0.01) {
-                    setPaymentList([
-                        {
-                            id: Date.now(),
-                            payment_method_id: defaultPmId,
-                            value: remainingBalance.toFixed(2),
-                            installments: 1,
-                            cheque_number: '',
-                            cheque_agency: '',
-                            cheque_account: '',
-                            card_brand: '',
-                            observation: ''
-                        }
-                    ]);
+                    const openPayments = (order.payments || []).filter(p => p.status !== 'P' && !p.paid_at);
+
+                    if (openPayments.length > 0) {
+                        const mapped = openPayments.map((p, idx) => {
+                            const foundPm = methods.find(pm => 
+                                pm.description.toLowerCase() === String(p.payment_method || '').toLowerCase() || 
+                                pm.id == p.payment_method
+                            );
+                            return {
+                                id: `open-p-${idx}-${Date.now()}`,
+                                payment_method_id: foundPm ? foundPm.id : defaultPmId,
+                                value: parseFloat(p.value || 0).toFixed(2),
+                                installments: p.installment_number || 1,
+                                cheque_number: p.cheque_number || '',
+                                cheque_agency: p.cheque_agency || '',
+                                cheque_account: p.cheque_account || '',
+                                card_brand: p.card_brand || '',
+                                observation: p.observation || ''
+                            };
+                        });
+                        setPaymentList(mapped);
+                    } else {
+                        setPaymentList([
+                            {
+                                id: Date.now(),
+                                payment_method_id: defaultPmId,
+                                value: remainingBalance.toFixed(2),
+                                installments: 1,
+                                cheque_number: '',
+                                cheque_agency: '',
+                                cheque_account: '',
+                                card_brand: '',
+                                observation: ''
+                            }
+                        ]);
+                    }
                 } else {
                     setPaymentList([]);
                 }
