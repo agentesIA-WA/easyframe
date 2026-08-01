@@ -493,8 +493,29 @@ export default function OrderList() {
                     { key: 'seller', label: 'Vendedor', render: (val) => val ? val.name : '-' },
                     { key: 'framer', label: 'Moldurista', render: (val) => val ? val.name : 'Não atribuído' },
                     { key: 'status', label: 'Status', render: (val) => getStatusBadge(val) },
-                    { key: 'total_value', label: 'Valor Total', render: (val) => `R$ ${parseFloat(val).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
-                    { key: 'discount', label: 'Desconto', render: (val) => `R$ ${parseFloat(val).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+                    { key: 'total_value', label: 'Valor Total', render: (val) => `R$ ${parseFloat(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+                    { 
+                        key: 'discount', 
+                        label: 'Desconto Total', 
+                        render: (val, order) => {
+                            const orderDiscount = parseFloat(order?.discount || 0);
+                            const itemsDiscount = (order?.items || []).reduce((acc, item) => acc + parseFloat(item.item_discount || 0), 0);
+                            const totalDiscount = orderDiscount + itemsDiscount;
+                            if (totalDiscount <= 0) return <span className="text-slate-400 font-normal">R$ 0,00</span>;
+                            return (
+                                <div className="inline-flex flex-col">
+                                    <span className="text-rose-600 font-black text-sm">
+                                        - R$ {totalDiscount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </span>
+                                    {itemsDiscount > 0 && orderDiscount > 0 && (
+                                        <span className="text-[10px] text-slate-400 font-medium">
+                                            (Desconto do Pedido: R$ {orderDiscount.toFixed(2)} | Desconto dos Itens: R$ {itemsDiscount.toFixed(2)})
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        } 
+                    },
                     { key: 'created_at', label: 'Data do Pedido', render: (val) => formatDate(val) },
                     { key: 'delivery_date', label: 'Previsão de Entrega', render: (val) => val ? formatDate(val) : 'Não definida' },
                     { key: 'delivered_at', label: 'Data Real da Entrega', render: (val) => val ? formatDate(val) : '-' },
@@ -502,24 +523,37 @@ export default function OrderList() {
                     { key: 'items', label: 'Itens do Pedido', render: (items) => items && items.length > 0 ? (
                         <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mt-1">
                             <ul className="space-y-2">
-                                {items.map(item => (
-                                    <li key={item.id} className="text-xs pb-2 border-b border-slate-100 last:border-0 last:pb-0">
-                                        <div className="font-bold text-slate-700">{item.quantity}x {item.description} ({item.width}x{item.height}cm)</div>
-                                        <div className="text-primary-600 font-black">R$ {parseFloat(item.item_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-                                        {item.sub_items && item.sub_items.length > 0 && (
-                                            <ul className="mt-1 pl-3 border-l-2 border-slate-200 space-y-1">
-                                                {item.sub_items.map(sub => (
-                                                    <li key={sub.id} className="text-[10px] text-slate-500">
-                                                        {sub.code || sub.product?.code ? <span className="font-mono text-slate-400 mr-1">[{sub.code || sub.product?.code}]</span> : null}
-                                                        {sub.quantity}x {sub.description}
-                                                        {parseFloat(sub.margin) > 0 && <span className="ml-1 text-primary-600 font-bold">[Margem: {parseFloat(sub.margin)}cm]</span>}
-                                                        {' '}- R$ {parseFloat(sub.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                    </li>
-                                ))}
+                                {items.map(item => {
+                                    const discPct = parseFloat(item.discount_percent || 0);
+                                    const discVal = parseFloat(item.item_discount || 0);
+                                    return (
+                                        <li key={item.id} className="text-xs pb-2 border-b border-slate-100 last:border-0 last:pb-0">
+                                            <div className="flex justify-between items-start">
+                                                <div className="font-bold text-slate-700">{item.quantity}x {item.description} ({item.width}x{item.height}cm)</div>
+                                                <div className="text-right">
+                                                    <div className="text-primary-600 font-black">R$ {parseFloat(item.item_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                                                    {(discPct > 0 || discVal > 0) && (
+                                                        <div className="text-[10px] text-rose-600 font-bold">
+                                                            Desc: {discPct > 0 ? `${discPct}%` : ''} {discVal > 0 ? `(-R$ ${discVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})` : ''}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {item.sub_items && item.sub_items.length > 0 && (
+                                                <ul className="mt-1 pl-3 border-l-2 border-slate-200 space-y-1">
+                                                    {item.sub_items.map(sub => (
+                                                        <li key={sub.id} className="text-[10px] text-slate-500">
+                                                            {sub.code || sub.product?.code ? <span className="font-mono text-slate-400 mr-1">[{sub.code || sub.product?.code}]</span> : null}
+                                                            {sub.quantity}x {sub.description}
+                                                            {parseFloat(sub.margin) > 0 && <span className="ml-1 text-primary-600 font-bold">[Margem: {parseFloat(sub.margin)}cm]</span>}
+                                                            {' '}- R$ {parseFloat(sub.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         </div>
                     ) : <span className="text-slate-400 italic">Nenhum item</span> },
