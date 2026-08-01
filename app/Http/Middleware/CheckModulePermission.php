@@ -23,16 +23,12 @@ class CheckModulePermission
     {
         $user = $this->resolveUser($request);
 
-        // Sem token ou token inválido — permite passar (o sistema funciona sem auth server-side)
+        // Sem token ou token inválido — permite passar
         if (!$user) {
             return $next($request);
         }
 
-        // Admins têm acesso total
-        if ($user->is_admin || ($user->id === 1)) {
-            return $next($request);
-        }
-
+        // Valida permissão na matriz de acesso (hasModuleAccess trata fallback de admin se módulo não estiver setado)
         if (!$user->hasModuleAccess($module, $action)) {
             return response()->json([
                 'message' => 'Acesso negado. Você não tem permissão para esta funcionalidade.',

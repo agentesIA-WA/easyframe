@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNotification } from '../../Contexts/NotificationContext';
+import { useAuth } from '../../Contexts/AuthContext';
 
 const UserPermissions = () => {
+    const { user: currentUser, refreshUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [modules, setModules] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
@@ -132,6 +134,11 @@ const UserPermissions = () => {
             
             // Atualiza a lista local de usuários para refletir as mudanças
             setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, permissions: permissionsToSave } : u));
+
+            // Se for o próprio usuário logado, atualiza o contexto de autenticação
+            if (currentUser && currentUser.id === selectedUser.id) {
+                await refreshUser();
+            }
         } catch (error) {
             notify('error', 'Erro ao salvar permissões.');
         } finally {
@@ -246,7 +253,7 @@ const UserPermissions = () => {
                                                 : 'bg-emerald-50 border-emerald-400 text-emerald-700 hover:bg-emerald-100'
                                         }`}
                                     >
-                                        {allChecked ? '⊘ Revogar Tudo' : '✓ Acesso Total'}
+                                        {allChecked ? '⊘ Desmarcar Todos' : '✓ Marcar Todos na Matriz'}
                                     </button>
                                 )}
                                 <button 

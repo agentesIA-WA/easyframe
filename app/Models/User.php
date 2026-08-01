@@ -44,29 +44,26 @@ class User extends Authenticatable
 
     /**
      * Verifica se o usuário tem permissão em um módulo específico.
+     * Se a permissão estiver configurada na matriz para o módulo, a matriz tem prioridade total.
+     * Caso não haja registro no módulo, utiliza o status de admin como fallback.
      */
     public function hasModuleAccess(string $moduleName, string $action = 'view'): bool
     {
-        // Admins têm acesso irrestrito
-        if ($this->is_admin) {
-            return true;
-        }
-
         $permission = $this->modulePermissions()
             ->whereHas('module', fn ($q) => $q->where('name', $moduleName))
             ->first();
 
-        if (!$permission) {
-            return false;
+        if ($permission) {
+            return match ($action) {
+                'view' => (bool) $permission->can_view,
+                'create' => (bool) $permission->can_create,
+                'update' => (bool) $permission->can_update,
+                'delete' => (bool) $permission->can_delete,
+                default => false,
+            };
         }
 
-        return match ($action) {
-            'view' => $permission->can_view,
-            'create' => $permission->can_create,
-            'update' => $permission->can_update,
-            'delete' => $permission->can_delete,
-            default => false,
-        };
+        return (bool) $this->is_admin;
     }
 
     /**

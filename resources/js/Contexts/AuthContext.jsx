@@ -49,22 +49,24 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * Verifica se o usuário tem acesso a um módulo/ação.
-     * Admins sempre retornam true.
+     * Se a permissão estiver configurada na matriz para o módulo, a matriz tem prioridade total.
+     * Caso não haja registro no módulo, utiliza o status de admin como fallback.
      */
     const hasAccess = useCallback((moduleName, action = 'view') => {
         if (!user) return false;
-        if (user.is_admin) return true;
 
         const perm = user.permissions?.find(p => p.module_name === moduleName);
-        if (!perm) return false;
-
-        switch (action) {
-            case 'view': return perm.can_view;
-            case 'create': return perm.can_create;
-            case 'update': return perm.can_update;
-            case 'delete': return perm.can_delete;
-            default: return false;
+        if (perm) {
+            switch (action) {
+                case 'view': return !!perm.can_view;
+                case 'create': return !!perm.can_create;
+                case 'update': return !!perm.can_update;
+                case 'delete': return !!perm.can_delete;
+                default: return false;
+            }
         }
+
+        return !!user.is_admin;
     }, [user]);
 
     /**
