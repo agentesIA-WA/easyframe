@@ -37,13 +37,36 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
     }, [customer]);
 
     const handleCepSelect = (cepData) => {
-        setFormData({
-            ...formData,
+        setFormData(prev => ({
+            ...prev,
             cep: maskCEP(cepData.cep),
-            uf: cepData.uf,
-            city: cepData.city,
-            address: cepData.address
-        });
+            uf: cepData.uf || prev.uf,
+            city: cepData.city || prev.city,
+            address: cepData.address || prev.address
+        }));
+    };
+
+    const handleDirectCepSearch = async () => {
+        const cleanCep = unmask(formData.cep);
+        if (cleanCep.length === 8) {
+            try {
+                setLoading(true);
+                const response = await axios.get(`/api/v1/support/cep/search?cep=${cleanCep}`);
+                const data = response.data;
+                if (Array.isArray(data) && data.length > 0) {
+                    handleCepSelect(data[0]);
+                    notify('success', 'Endereço localizado com sucesso!');
+                    return;
+                } else {
+                    notify('warning', 'CEP não encontrado. Abrindo busca manual...');
+                }
+            } catch (error) {
+                console.error('Erro na busca de CEP:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        setIsCepModalOpen(true);
     };
 
     const handleSubmit = async (e) => {
@@ -161,7 +184,7 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
                                     value={formData.cep}
                                     onChange={(e) => setFormData({...formData, cep: maskCEP(e.target.value)})}
                                 />
-                                <button type="button" onClick={() => setIsCepModalOpen(true)} className="bg-blue-50 text-blue-600 px-6 py-3 rounded-lg font-bold">Buscar</button>
+                                <button type="button" onClick={handleDirectCepSearch} className="bg-blue-50 text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-blue-100 transition">Buscar</button>
                             </div>
                         </div>
                         <div>
