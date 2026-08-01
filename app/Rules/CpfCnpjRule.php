@@ -59,6 +59,11 @@ class CpfCnpjRule implements ValidationRule
             return false;
         }
 
+        // Os dois últimos dígitos (DVs) devem ser obrigatoriamente numéricos (0-9)
+        if (!ctype_digit(substr($cnpj, 12, 2))) {
+            return false;
+        }
+
         $charVal = fn($ch) => ord($ch) - 48;
 
         $b = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];

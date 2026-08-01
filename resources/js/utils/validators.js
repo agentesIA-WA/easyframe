@@ -27,6 +27,9 @@ export const isValidCNPJ = (cnpj) => {
     const clean = String(cnpj).replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     if (clean.length !== 14 || /^([a-zA-Z0-9])\1{13}$/.test(clean)) return false;
 
+    // Os dois últimos caracteres (dígitos verificadores) devem ser obrigatoriamente numéricos (0-9)
+    if (!/^\d{2}$/.test(clean.slice(12))) return false;
+
     const charVal = (ch) => {
         const code = ch.charCodeAt(0);
         return code - 48;
