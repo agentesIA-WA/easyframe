@@ -145,7 +145,9 @@ class OrderController extends Controller
                     : (float)$order->total_value;
                 $installments = max(1, (int)($pmData['installments'] ?? 1));
                 $installmentValue = $assignedValue / $installments;
-                $paymentStatus = $order->status === 'draft' ? 'D' : 'A';
+                
+                $isPaidExplicit = !empty($pmData['is_paid']) || ($pmData['status'] ?? '') === 'P';
+                $paymentStatus = $isPaidExplicit ? 'P' : ($order->status === 'draft' ? 'D' : 'A');
 
                 for ($i = 1; $i <= $installments; $i++) {
                     $chequeNum = null;
@@ -178,6 +180,8 @@ class OrderController extends Controller
                         'status' => $paymentStatus,
                         'due_date' => $dueDate,
                         'value' => $installmentValue,
+                        'paid_value' => $paymentStatus === 'P' ? $installmentValue : null,
+                        'paid_at' => $paymentStatus === 'P' ? now() : null,
                         'installment_number' => $i,
                         'payment_method' => $method,
                         'cheque_number' => $chequeNum,

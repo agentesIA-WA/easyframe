@@ -114,6 +114,7 @@ const BudgetScreen = () => {
                                     payment_method_id: pmId,
                                     value: parseFloat(p.value || 0).toFixed(2),
                                     installments: p.installment_number || 1,
+                                    is_paid: p.status === 'P' || !!p.paid_at,
                                     card_brand: p.card_brand || '',
                                     cheque_type: p.cheque_number ? 'parcelado' : 'vista',
                                     cheque_numbers: p.cheque_number ? [p.cheque_number] : [],
@@ -351,6 +352,7 @@ const BudgetScreen = () => {
                 payment_method_id: '',
                 value: rem > 0 ? rem.toFixed(2) : '',
                 installments: 1,
+                is_paid: isOrder,
                 card_brand: '',
                 cheque_type: 'vista',
                 cheque_numbers: [],
@@ -418,6 +420,7 @@ const BudgetScreen = () => {
                         payment_method: selectedPm ? selectedPm.description : null,
                         value: isNaN(val) || val <= 0 ? (paymentList.length === 1 ? grandTotal : 0) : val,
                         installments: parseInt(p.installments || 1),
+                        is_paid: p.is_paid !== undefined ? p.is_paid : isOrder,
                         card_brand: p.card_brand || null,
                         cheque_type: p.cheque_type,
                         cheque_numbers: p.cheque_numbers,
@@ -811,15 +814,26 @@ const BudgetScreen = () => {
                                             </span>
                                         )}
                                     </div>
-                                    {paymentList.length > 1 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRemovePaymentLine(pLine.id)}
-                                            className="text-rose-500 hover:text-rose-700 text-xs font-black uppercase flex items-center gap-1 bg-rose-50 px-2 py-1 rounded hover:bg-rose-100 transition-all"
-                                        >
-                                            ✕ Remover
-                                        </button>
-                                    )}
+                                    <div className="flex items-center gap-3">
+                                        <label className="flex items-center gap-1.5 cursor-pointer bg-white border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-50 transition shadow-2xs">
+                                            <input 
+                                                type="checkbox"
+                                                className="w-3.5 h-3.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                                                checked={pLine.is_paid !== false}
+                                                onChange={e => handleUpdatePaymentLine(pLine.id, 'is_paid', e.target.checked)}
+                                            />
+                                            <span className="text-[10px] font-black uppercase text-slate-700">Pago no ato</span>
+                                        </label>
+                                        {paymentList.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemovePaymentLine(pLine.id)}
+                                                className="text-rose-500 hover:text-rose-700 text-xs font-black uppercase flex items-center gap-1 bg-rose-50 px-2 py-1 rounded hover:bg-rose-100 transition-all"
+                                            >
+                                                ✕ Remover
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
