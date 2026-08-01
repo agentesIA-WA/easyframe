@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import CepModal from '../../Components/Modals/CepModal';
 import { maskCEP, maskCPFCNPJ, maskPhone, unmask } from '../../utils/masks';
+import { isValidCPFCNPJ } from '../../utils/validators';
 import { useNotification } from '../../Contexts/NotificationContext';
 
 const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedded = false }) => {
@@ -16,6 +17,7 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
         address: '',
         notes: '',
     });
+    const [taxIdTouched, setTaxIdTouched] = useState(false);
     const [isCepModalOpen, setIsCepModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const { notify } = useNotification();
@@ -35,6 +37,9 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
             });
         }
     }, [customer]);
+
+    const isTaxIdValid = !formData.tax_id || isValidCPFCNPJ(formData.tax_id);
+    const cleanTaxIdLen = unmask(formData.tax_id).length;
 
     const handleCepSelect = (cepData) => {
         setFormData(prev => ({
@@ -87,6 +92,13 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!isValidCPFCNPJ(formData.tax_id)) {
+            setTaxIdTouched(true);
+            notify('error', 'O CPF ou CNPJ digitado é inválido. Por favor, verifique o documento.');
+            return;
+        }
+
         setLoading(true);
 
         const dataToSave = {
@@ -112,12 +124,14 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
                 onSaved(savedCustomer);
             } else if (!customer) {
                 setFormData({ name: '', tax_id: '', email: '', phone: '', cep: '', uf: '', city: '', address: '', notes: '' });
+                setTaxIdTouched(false);
             }
         } catch (error) {
             console.error('Erro ao salvar cliente:', error);
-            const msg = error.response?.status === 409 
+            const backendErrorMsg = error.response?.data?.errors?.tax_id?.[0];
+            const msg = backendErrorMsg || (error.response?.status === 409 
                 ? 'Este CPF/CNPJ já está vinculado a outro cliente.' 
-                : 'Não foi possível salvar os dados. Verifique sua conexão ou as tabelas do sistema.';
+                : 'Não foi possível salvar os dados. Verifique sua conexão ou as tabelas do sistema.');
             notify('error', msg);
         } finally {
             setLoading(false);
@@ -145,14 +159,34 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
                         />
                     </div>
                     <div>
-                        <label className="block text-gray-600 text-sm font-semibold mb-2 uppercase tracking-wider">CPF/CNPJ</label>
+                        <div className="flex justify-between items-center mb-2">
+                            <label className="block text-gray-600 text-sm font-semibold uppercase tracking-wider">CPF/CNPJ</label>
+                            {cleanTaxIdLen > 0 && (
+                                <span className={`text-xs font-bold ${isTaxIdValid ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                    {isTaxIdValid ? '✓ VÁLIDO' : '✕ INVÁLIDO'}
+                                </span>
+                            )}
+                        </div>
                         <input 
-                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            className={`w-full px-4 py-3 rounded-lg border outline-none transition ${
+                                taxIdTouched && !isTaxIdValid 
+                                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-500 bg-rose-50/20' 
+                                    : cleanTaxIdLen >= 11 && isTaxIdValid 
+                                        ? 'border-emerald-300 focus:ring-2 focus:ring-emerald-500' 
+                                        : 'border-gray-300 focus:ring-2 focus:ring-blue-500'
+                            }`}
                             type="text"
                             value={formData.tax_id}
-                            onChange={(e) => setFormData({...formData, tax_id: maskCPFCNPJ(e.target.value)})}
+                            onChange={(e) => {
+                                setFormData({...formData, tax_id: maskCPFCNPJ(e.target.value)});
+                                setTaxIdTouched(true);
+                            }}
+                            onBlur={() => setTaxIdTouched(true)}
                             required
                         />
+                        {taxIdTouched && !isTaxIdValid && (
+                            <p className="text-rose-500 text-xs font-bold mt-1">Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.</p>
+                        )}
                     </div>
                 </div>
 
