@@ -1,0 +1,45 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sdm-modern-app
+    container_name: sdm-app
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8000:8000"
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    networks:
+      - sdm-network
+
+  db:
+    image: mysql:8.0
+    container_name: sdm-db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: sdm_modern
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_PASSWORD: root
+      MYSQL_USER: sdm_user
+    volumes:
+      - sdm-db-data:/var/lib/mysql
+    networks:
+      - sdm-network
+
+networks:
+  sdm-network:
+    driver: bridge
+
+volumes:
+  sdm-db-data:
+    driver: local

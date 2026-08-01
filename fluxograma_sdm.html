@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluxograma do Sistema SDM Modern</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 1200px;
+            width: 100%;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        p.subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+        .legend {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-left: 5px solid #3498db;
+        }
+        .legend h2 {
+            font-size: 1.2rem;
+            margin-top: 0;
+        }
+        .legend ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .legend li {
+            margin-bottom: 10px;
+        }
+        .legend b {
+            color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Arquitetura SDM Modern</h1>
+    <p class="subtitle">Visão Geral da Comunicação entre Módulos e Camadas</p>
+
+    <div class="mermaid">
+        graph TD
+            %% Camada de Usuário
+            User((Usuário / Cliente)) -->|Acessa via Navegador| Frontend[Frontend React + Inertia.js]
+
+            %% Camada de Comunicação
+            subgraph "Backend Laravel (Monolito Modular)"
+                Frontend -->|Requisições API v1| Router[Agregador de Rotas]
+                Router --> Auth{Middleware Auth}
+                
+                Auth -->|Autorizado| Modules[Módulos do Sistema]
+                
+                subgraph "Módulos Principais"
+                    Identity[Identity/RBAC] ---|Gere Usuários e Permissões| Modules
+                    Customer[Customer] ---|Gestão de Clientes e Produtos| Modules
+                    Sales[Sales] ---|Pedidos e Orçamentos| Modules
+                    Finance[Finance] ---|Contas a Pagar/Receber| Modules
+                    HR[HR] ---|Funcionários e Comissões| Modules
+                    Inventory[Inventory/Purchases] ---|Estoque de Molduras| Modules
+                end
+                
+                %% Fluxos de Comunicação entre Módulos
+                Sales -->|Cria| Customer
+                Sales -->|Gera Lançamentos| Finance
+                Finance -->|Consulta Fornecedores| Customer
+                Inventory -->|Atualiza Estoque| Customer
+                HR -->|Calcula Comissões| Sales
+            end
+
+            %% Camada de Dados
+            subgraph "Persistência de Dados"
+                Modules -->|Leitura/Escrita| MySQL[(Banco de Dados MySQL)]
+                Identity -->|Logs de Auditoria| MySQL
+            end
+
+            %% Camada Externa / Legado
+            subgraph "Integração / ETL"
+                ETL[Scripts de Migração/ETL] -->|Sincroniza| MySQL
+                LegacyDB[(Banco de Dados Legado CF)] -.->|Fonte de Dados| ETL
+            end
+
+            %% Estilização
+            style User fill:#f9f,stroke:#333,stroke-width:2px
+            style Frontend fill:#61dafb,stroke:#333,stroke-width:2px
+            style Router fill:#ff9a00,stroke:#333,stroke-width:2px
+            style MySQL fill:#00758f,stroke:#fff,stroke-width:2px
+            style LegacyDB fill:#ccc,stroke:#666,stroke-dasharray: 5 5
+    </div>
+
+    <div class="legend">
+        <h2>Guia de Comunicação</h2>
+        <ul>
+            <li><b>Frontend ➔ Backend:</b> Comunicação via API RESTful (v1) utilizando Inertia.js para uma experiência de SPA.</li>
+            <li><b>Auth Middleware:</b> Centraliza a segurança, verificando permissões granulares no módulo de Identity.</li>
+            <li><b>Inter-Módulos:</b> O sistema utiliza eventos e relações de banco de dados para manter a consistência entre Vendas, Financeiro e Estoque.</li>
+            <li><b>ETL:</b> Ponte vital que traz os dados do sistema legado para a arquitetura moderna de forma estruturada.</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+</script>
+
+</body>
+</html>

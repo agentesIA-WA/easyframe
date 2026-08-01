@@ -1,0 +1,95 @@
+<?php
+
+namespace App\Models;
+
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+
+use App\Modules\Identity\Models\UserModulePermission;
+use App\Modules\HR\Models\Employee;
+
+class User extends Authenticatable
+{
+    use HasFactory, Notifiable;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'is_admin',
+    ];
+
+    /**
+     * Relacionamento com permissões de módulo (RBAC).
+     */
+    public function modulePermissions()
+    {
+        return $this->hasMany(UserModulePermission::class);
+    }
+
+    /**
+     * Relacionamento com o registro de funcionário.
+     */
+    public function employee()
+    {
+        return $this->hasOne(Employee::class);
+    }
+
+    /**
+     * Verifica se o usuário tem permissão em um módulo específico.
+     */
+    public function hasModuleAccess(string $moduleName, string $action = 'view'): bool
+    {
+        // Admins têm acesso irrestrito
+        if ($this->is_admin) {
+            return true;
+        }
+
+        $permission = $this->modulePermissions()
+            ->whereHas('module', fn ($q) => $q->where('name', $moduleName))
+            ->first();
+
+        if (!$permission) {
+            return false;
+        }
+
+        return match ($action) {
+            'view' => $permission->can_view,
+            'create' => $permission->can_create,
+            'update' => $permission->can_update,
+            'delete' => $permission->can_delete,
+            default => false,
+        };
+    }
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'is_admin' => 'boolean',
+        ];
+    }
+}
