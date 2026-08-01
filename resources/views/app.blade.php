@@ -6,7 +6,7 @@
     <title>EASY FRAME - Sistema para Molduraria</title>
     <link rel="icon" type="image/png" href="/logo.png">
     @viteReactRefresh
-    @vite(['resources/js/app.jsx', 'resources/css/app.css'])
+    @vite('resources/js/app.jsx')
 </head>
 <body class="antialiased bg-gray-100">
     <div id="app"></div>
