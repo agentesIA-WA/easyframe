@@ -68,16 +68,19 @@ const BudgetScreen = () => {
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const [custRes, sellerRes, payRes] = await Promise.all([
+                const [custRes, sellerRes, payRes] = await Promise.allSettled([
                     axios.get('/api/v1/customers'),
                     axios.get('/api/v1/hr/employees'),
                     axios.get('/api/v1/core/payment-methods')
                 ]);
-                setCustomers(custRes.data.data || custRes.data);
-                setPaymentMethods(payRes.data.data || payRes.data);
 
-                const sellerData = sellerRes.data.data || sellerRes.data;
-                setSellers(sellerData.filter(e => e.can_sell));
+                const custList = custRes.status === 'fulfilled' ? (custRes.value.data.data || custRes.value.data) : [];
+                const sellerData = sellerRes.status === 'fulfilled' ? (sellerRes.value.data.data || sellerRes.value.data) : [];
+                const payList = payRes.status === 'fulfilled' ? (payRes.value.data.data || payRes.value.data) : [];
+
+                setCustomers(Array.isArray(custList) ? custList : []);
+                setPaymentMethods(Array.isArray(payList) ? payList : []);
+                setSellers(Array.isArray(sellerData) ? sellerData.filter(e => e.can_sell) : []);
 
                 // Se for edição, busca os dados do orçamento
                 if (isEdit && budgetId) {
@@ -86,7 +89,6 @@ const BudgetScreen = () => {
 
                     setCustomerId(budget.customer_id);
                     // Busca o nome do cliente para exibir
-                    const custList = custRes.data.data || custRes.data;
                     const foundCust = Array.isArray(custList) ? custList.find(c => c.id === budget.customer_id) : null;
                     if (foundCust) setSelectedCustomerName(foundCust.name);
                     setSellerId(budget.seller_id);
@@ -94,7 +96,6 @@ const BudgetScreen = () => {
 
                     // Carrega formas de pagamento do orçamento/pedido se existirem
                     if (budget.payments && budget.payments.length > 0) {
-                        const payList = payRes.data.data || payRes.data;
                         const grouped = [];
                         budget.payments.forEach((p, idx) => {
                             const foundPm = Array.isArray(payList) 
