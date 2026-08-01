@@ -67,3 +67,9 @@ export const isValidCPFCNPJ = (val) => {
     }
     return false;
 };
+
+export const isValidEmail = (email) => {
+    if (!email || String(email).trim() === '') return true; // Opcional, se em branco não invalida o formulário
+    const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return re.test(String(email).trim());
+};

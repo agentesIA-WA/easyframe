@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import CepModal from '../../Components/Modals/CepModal';
 import { maskCEP, maskCPFCNPJ, maskPhone, unmask } from '../../utils/masks';
-import { isValidCPFCNPJ } from '../../utils/validators';
+import { isValidCPFCNPJ, isValidEmail } from '../../utils/validators';
 import { useNotification } from '../../Contexts/NotificationContext';
 
 const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedded = false }) => {
@@ -18,6 +18,7 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
         notes: '',
     });
     const [taxIdTouched, setTaxIdTouched] = useState(false);
+    const [emailTouched, setEmailTouched] = useState(false);
     const [isCepModalOpen, setIsCepModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const { notify } = useNotification();
@@ -40,6 +41,8 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
 
     const isTaxIdValid = !formData.tax_id || isValidCPFCNPJ(formData.tax_id);
     const cleanTaxIdLen = unmask(formData.tax_id).length;
+    const isEmailValid = isValidEmail(formData.email);
+    const hasEmailVal = formData.email && formData.email.trim().length > 0;
 
     const handleCepSelect = (cepData) => {
         setFormData(prev => ({
@@ -96,6 +99,12 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
         if (!isValidCPFCNPJ(formData.tax_id)) {
             setTaxIdTouched(true);
             notify('error', 'O CPF ou CNPJ digitado é inválido. Por favor, verifique o documento.');
+            return;
+        }
+
+        if (!isEmailValid) {
+            setEmailTouched(true);
+            notify('error', 'O E-mail de contato informado é inválido.');
             return;
         }
 
@@ -192,14 +201,34 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                     <div>
-                        <label className="block text-gray-600 text-sm font-semibold mb-2 uppercase tracking-wider">E-mail de Contato</label>
+                        <div className="flex justify-between items-center mb-2">
+                            <label className="block text-gray-600 text-sm font-semibold uppercase tracking-wider">E-mail de Contato</label>
+                            {hasEmailVal && (
+                                <span className={`text-xs font-bold ${isEmailValid ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                    {isEmailValid ? '✓ VÁLIDO' : '✕ INVÁLIDO'}
+                                </span>
+                            )}
+                        </div>
                         <input 
-                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            className={`w-full px-4 py-3 rounded-lg border outline-none transition ${
+                                emailTouched && !isEmailValid 
+                                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-500 bg-rose-50/20' 
+                                    : hasEmailVal && isEmailValid 
+                                        ? 'border-emerald-300 focus:ring-2 focus:ring-emerald-500' 
+                                        : 'border-gray-300 focus:ring-2 focus:ring-blue-500'
+                            }`}
                             type="email"
                             placeholder="email@exemplo.com"
                             value={formData.email}
-                            onChange={(e) => setFormData({...formData, email: e.target.value})}
+                            onChange={(e) => {
+                                setFormData({...formData, email: e.target.value});
+                                setEmailTouched(true);
+                            }}
+                            onBlur={() => setEmailTouched(true)}
                         />
+                        {emailTouched && !isEmailValid && (
+                            <p className="text-rose-500 text-xs font-bold mt-1">Informe um endereço de e-mail válido (ex: cliente@dominio.com).</p>
+                        )}
                     </div>
                     <div>
                         <label className="block text-gray-600 text-sm font-semibold mb-2 uppercase tracking-wider">Telefone de Contato</label>
