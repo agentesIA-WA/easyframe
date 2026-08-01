@@ -46,6 +46,22 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
         }));
     };
 
+    const handleCepBlur = async () => {
+        const cleanCep = unmask(formData.cep);
+        if (cleanCep.length === 8) {
+            try {
+                const response = await axios.get(`/api/v1/support/cep/search?cep=${cleanCep}`);
+                const data = response.data;
+                if (Array.isArray(data) && data.length > 0) {
+                    handleCepSelect(data[0]);
+                    notify('success', 'Endereço localizado automaticamente!');
+                }
+            } catch (error) {
+                console.error('Erro na busca automática de CEP:', error);
+            }
+        }
+    };
+
     const handleDirectCepSearch = async () => {
         const cleanCep = unmask(formData.cep);
         if (cleanCep.length === 8) {
@@ -181,8 +197,10 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
                                 <input 
                                     className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition"
                                     type="text"
+                                    placeholder="00000-000"
                                     value={formData.cep}
                                     onChange={(e) => setFormData({...formData, cep: maskCEP(e.target.value)})}
+                                    onBlur={handleCepBlur}
                                 />
                                 <button type="button" onClick={handleDirectCepSearch} className="bg-blue-50 text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-blue-100 transition">Buscar</button>
                             </div>
