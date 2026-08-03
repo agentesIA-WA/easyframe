@@ -196,13 +196,13 @@ export default function OrderList() {
             delivered: 'bg-purple-100 text-purple-800 border-purple-200',
         };
         const labels = {
-            confirmed: 'Na Fila / Confirmado',
+            confirmed: 'Confirmado',
             production: 'Em Produção',
-            ready: 'Pronto p/ Entrega',
+            ready: 'Pronto',
             delivered: 'Entregue',
         };
         return (
-            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider whitespace-nowrap inline-block shadow-sm ${styles[status] || 'bg-slate-100'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider whitespace-nowrap inline-block shadow-xs ${styles[status] || 'bg-slate-100'}`}>
                 {labels[status] || status}
             </span>
         );
@@ -384,25 +384,25 @@ export default function OrderList() {
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th onClick={() => handleSort('id')} className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
+                                <th onClick={() => handleSort('id')} className="px-2 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
                                     Pedido <SortIcon field="id" />
                                 </th>
-                                <th onClick={() => handleSort('customer.name')} className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors">
+                                <th onClick={() => handleSort('customer.name')} className="px-2 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors">
                                     Cliente <SortIcon field="customer.name" />
                                 </th>
-                                <th className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                                <th className="px-2 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                                     Moldurista
                                 </th>
-                                <th onClick={() => handleSort('delivery_date')} className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
+                                <th onClick={() => handleSort('delivery_date')} className="px-2 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
                                     Data <SortIcon field="delivery_date" />
                                 </th>
-                                <th onClick={() => handleSort('total_value')} className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
+                                <th onClick={() => handleSort('total_value')} className="px-2 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
                                     Valor <SortIcon field="total_value" />
                                 </th>
-                                <th onClick={() => handleSort('status')} className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
+                                <th onClick={() => handleSort('status')} className="px-2 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
                                     Status <SortIcon field="status" />
                                 </th>
-                                <th className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                                <th className="px-2 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -412,28 +412,28 @@ export default function OrderList() {
                                 <tr><td colSpan="7" className="px-4 py-8 text-center text-slate-400 text-xs italic">Nenhum pedido na fila de produção no momento.</td></tr>
                             ) : orders.map(order => (
                                 <tr key={order.id} className="hover:bg-slate-50/80 transition-colors">
-                                    <td className="px-2.5 py-2 text-xs font-mono font-bold text-indigo-600 whitespace-nowrap">
+                                    <td className="px-2 py-1.5 text-xs font-mono font-bold text-indigo-600 whitespace-nowrap">
                                         ORD-{order.id}
                                     </td>
-                                    <td className="px-2.5 py-2 text-xs font-bold text-slate-700 uppercase">
-                                        <div className="truncate max-w-[180px] xl:max-w-[260px]" title={order.customer ? order.customer.name : `Cliente #${order.customer_id}`}>
+                                    <td className="px-2 py-1.5 text-xs font-bold text-slate-700 uppercase">
+                                        <div className="truncate max-w-[140px] md:max-w-[200px]" title={order.customer ? order.customer.name : `Cliente #${order.customer_id}`}>
                                             {order.customer ? order.customer.name : `Cliente #${order.customer_id}`}
                                         </div>
-                                        <div className="text-[10px] text-slate-400 font-medium normal-case truncate max-w-[180px] mt-0.5">Vend: {order.seller ? order.seller.name : 'N/A'}</div>
+                                        <div className="text-[10px] text-slate-400 font-medium normal-case truncate max-w-[140px] mt-0.5">Vend: {order.seller ? order.seller.name : 'N/A'}</div>
                                     </td>
-                                    <td className="px-2.5 py-2 text-[10px] text-slate-500 font-bold uppercase whitespace-nowrap">
+                                    <td className="px-2 py-1.5 text-[10px] text-slate-500 font-bold uppercase whitespace-nowrap">
                                         {order.framer ? (
-                                            <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-700 border border-slate-200 inline-block">
+                                            <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 border border-slate-200 inline-block max-w-[110px] truncate align-bottom" title={order.framer.name}>
                                                 {order.framer.name}
                                             </span>
                                         ) : (
                                             <span className="text-slate-300">-</span>
                                         )}
                                     </td>
-                                    <td className="px-2.5 py-2 text-xs text-slate-500 whitespace-nowrap">{formatDate(order.created_at)}</td>
-                                    <td className="px-2.5 py-2 text-xs font-black text-slate-900 whitespace-nowrap">R$ {parseFloat(order.total_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                    <td className="px-2.5 py-2 whitespace-nowrap">{getStatusBadge(order.status)}</td>
-                                    <td className="px-2.5 py-2 text-xs whitespace-nowrap text-right">
+                                    <td className="px-2 py-1.5 text-xs text-slate-500 whitespace-nowrap">{formatDate(order.created_at)}</td>
+                                    <td className="px-2 py-1.5 text-xs font-black text-slate-900 whitespace-nowrap">R$ {parseFloat(order.total_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                    <td className="px-2 py-1.5 whitespace-nowrap">{getStatusBadge(order.status)}</td>
+                                    <td className="px-2 py-1.5 text-xs whitespace-nowrap text-right">
                                         <div className="flex items-center justify-end gap-1 whitespace-nowrap">
                                             <button 
                                                 onClick={() => setViewingOrder(order)}
