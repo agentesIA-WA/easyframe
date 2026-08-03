@@ -1,5 +1,6 @@
 /**
  * Utilitário para formatação e envio de Orçamentos/Pedidos via WhatsApp.
+ * Inclui detalhamento dos itens e link direto para o PDF / Ordem de Serviço.
  */
 export const sendWhatsApp = (item) => {
     if (!item) return;
@@ -31,8 +32,14 @@ export const sendWhatsApp = (item) => {
         message += `*Itens:*\n${itemsText}\n\n`;
     }
 
-    message += `*Valor Total:* R$ ${valFormatted}\n\n` +
-        `Qualquer dúvida, estamos à disposição! 🖼️✨`;
+    message += `*Valor Total:* R$ ${valFormatted}\n\n`;
+
+    if (item.id) {
+        const printUrl = `${window.location.origin}/orders/${item.id}/print`;
+        message += `📄 *Visualize / Baixe o Documento em PDF completo aqui:*\n${printUrl}\n\n`;
+    }
+
+    message += `Qualquer dúvida, estamos à disposição! 🖼️✨`;
 
     const encodedText = encodeURIComponent(message);
     
