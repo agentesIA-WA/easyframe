@@ -22,6 +22,7 @@ const BudgetScreen = () => {
     const pathname = window.location.pathname;
     const isEdit = pathname.includes('/edit');
     const [budgetId, setBudgetId] = useState(isEdit ? pathname.split('/')[2] : null);
+    const [budgetUuid, setBudgetUuid] = useState(null);
 
     // DADOS GERAIS DO ORÇAMENTO
     const [customerId, setCustomerId] = useState('');
@@ -87,6 +88,7 @@ const BudgetScreen = () => {
                 if (isEdit && budgetId) {
                     const budgetRes = await axios.get(`/api/v1/sales/orders/${budgetId}`);
                     const budget = budgetRes.data;
+                    if (budget.uuid) setBudgetUuid(budget.uuid);
 
                     setCustomerId(budget.customer_id);
                     // Busca o nome do cliente para exibir
@@ -464,6 +466,7 @@ const BudgetScreen = () => {
 
     const handleWhatsAppClick = async () => {
         let currentId = budgetId;
+        let currentUuid = budgetUuid;
 
         // Se é um orçamento novo (não gravado), grava primeiro para gerar o ID e link do PDF
         if (!currentId) {
@@ -498,7 +501,9 @@ const BudgetScreen = () => {
                 const res = await axios.post('/api/v1/sales/orders', payload);
                 const savedOrder = res.data;
                 currentId = savedOrder.id;
+                currentUuid = savedOrder.uuid;
                 setBudgetId(currentId);
+                if (currentUuid) setBudgetUuid(currentUuid);
                 notify('success', 'Orçamento/Pedido gravado! Abrindo WhatsApp...');
             } catch (err) {
                 notify('error', 'Erro ao gravar orçamento para envio.');
@@ -512,6 +517,7 @@ const BudgetScreen = () => {
         const foundCust = customers.find(c => c.id === customerId) || { name: selectedCustomerName };
         sendWhatsApp({
             id: currentId,
+            uuid: currentUuid,
             customer: foundCust,
             total_value: totalValue,
             items: peças,

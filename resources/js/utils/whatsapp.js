@@ -34,8 +34,9 @@ export const sendWhatsApp = (item) => {
 
     message += `*Valor Total:* R$ ${valFormatted}\n\n`;
 
-    if (item.id) {
-        const printUrl = `${window.location.origin}/orders/${item.id}/print`;
+    const accessKey = item.uuid || item.id;
+    if (accessKey) {
+        const printUrl = `${window.location.origin}/orders/${accessKey}/print`;
         message += `📄 *Visualize / Baixe o Documento em PDF completo aqui:*\n${printUrl}\n\n`;
     }
 

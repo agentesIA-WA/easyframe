@@ -551,11 +551,31 @@ class OrderController extends Controller
 
     public function printOS($orderKey)
     {
-        $cleanId = preg_replace('/[^0-9]/', '', (string)$orderKey);
-        $order = Order::where('id', $cleanId)
-            ->orWhere('id', $orderKey)
-            ->orWhere('legacy_id', $orderKey)
-            ->firstOrFail();
+        $isUuid = \Illuminate\Support\Str::isUuid($orderKey);
+
+        // Segurança: Se o usuário NÃO está autenticado (acesso público via WhatsApp/link externo),
+        // exige obrigatoriamente a chave UUID única de 36 caracteres.
+        // Isso impede que qualquer pessoa tente alterar o ID sequencial na URL para acessar orçamentos de outros clientes.
+        if (!Auth::check() && !$isUuid) {
+            return response()->json([
+                'message' => 'Acesso negado. Para acessar o Orçamento/Pedido sem login, utilize o link de acesso seguro (UUID).'
+            ], 403);
+        }
+
+        $order = Order::where('uuid', $orderKey)
+            ->when(Auth::check(), function ($query) use ($orderKey) {
+                $cleanId = preg_replace('/[^0-9]/', '', (string)$orderKey);
+                if ($cleanId !== '') {
+                    $query->orWhere('id', $cleanId)->orWhere('legacy_id', $cleanId);
+                }
+            })
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'message' => 'Orçamento/Pedido não encontrado ou link de acesso expirado/inválido.'
+            ], 404);
+        }
 
         return response()->json($order->load(['customer', 'seller', 'framer', 'items.subItems', 'payments']));
     }
