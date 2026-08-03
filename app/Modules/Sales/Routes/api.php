@@ -15,7 +15,7 @@ Route::prefix('sales')->group(function () {
     Route::post('/orders/{order}/rescue', [OrderController::class, 'logRescue'])->middleware('module.permission:orders,update');
     Route::post('/orders/{order}/settle', [OrderController::class, 'settle'])->middleware('module.permission:orders,update');
     Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus'])->middleware('module.permission:orders,update');
-    Route::get('/orders/{orderKey}/print', [OrderController::class, 'printOS'])->middleware('module.permission:orders,view');
+    Route::get('/orders/{orderKey}/print', [OrderController::class, 'printOS']);
     Route::delete('/orders/{order}', [OrderController::class, 'destroy'])->middleware('module.permission:budgets,delete');
     Route::post('/proposals/send-email', [EmailController::class, 'sendProposal'])->middleware('module.permission:budgets,view');
 });

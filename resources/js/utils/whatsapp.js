@@ -26,7 +26,7 @@ export const sendWhatsApp = (item) => {
     const valFormatted = totalVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     let message = `Olá, *${customer.name || 'Cliente'}*! 👋\n\n` +
-        `Segue o resumo do seu *${typeLabel} ${idLabel}* - EASY FRAME:\n\n`;
+        `Segue o resumo do seu *${typeLabel} ${idLabel}*:\n\n`;
 
     if (itemsText) {
         message += `*Itens:*\n${itemsText}\n\n`;
@@ -42,11 +42,11 @@ export const sendWhatsApp = (item) => {
     message += `Qualquer dúvida, estamos à disposição! 🖼️✨`;
 
     const encodedText = encodeURIComponent(message);
-    
+
     let url = '';
     if (cleanPhone) {
-        const phoneWithCountry = (cleanPhone.length >= 10 && !cleanPhone.startsWith('55')) 
-            ? `55${cleanPhone}` 
+        const phoneWithCountry = (cleanPhone.length >= 10 && !cleanPhone.startsWith('55'))
+            ? `55${cleanPhone}`
             : cleanPhone;
         url = `https://api.whatsapp.com/send?phone=${phoneWithCountry}&text=${encodedText}`;
     } else {

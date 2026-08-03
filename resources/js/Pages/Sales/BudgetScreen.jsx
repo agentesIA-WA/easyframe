@@ -21,7 +21,7 @@ const BudgetScreen = () => {
     // Identifica se é edição através da URL
     const pathname = window.location.pathname;
     const isEdit = pathname.includes('/edit');
-    const budgetId = isEdit ? pathname.split('/')[2] : null;
+    const [budgetId, setBudgetId] = useState(isEdit ? pathname.split('/')[2] : null);
 
     // DADOS GERAIS DO ORÇAMENTO
     const [customerId, setCustomerId] = useState('');
@@ -460,6 +460,63 @@ const BudgetScreen = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleWhatsAppClick = async () => {
+        let currentId = budgetId;
+
+        // Se é um orçamento novo (não gravado), grava primeiro para gerar o ID e link do PDF
+        if (!currentId) {
+            if (peças.length === 0 || !customerId || !sellerId) {
+                notify('warning', 'Selecione o Cliente, Vendedor e adicione ao menos uma peça antes de enviar por WhatsApp.');
+                return;
+            }
+
+            setLoading(true);
+            try {
+                const payload = {
+                    customer_id: customerId,
+                    seller_id: sellerId,
+                    framer_id: framerId || null,
+                    status: isOrder ? 'confirmed' : 'draft',
+                    payment_terms: isOrder ? 'CONFORME REGISTRO' : 'A DEFINIR',
+                    discount: generalDiscount,
+                    delivery_date: deliveryDate ? `${deliveryDate}${deliveryTime ? ' ' + deliveryTime + ':00' : ''}` : null,
+                    payments: isOrder ? paymentList : [],
+                    items: peças.map(p => ({
+                        description: p.description,
+                        height: p.height,
+                        width: p.width,
+                        observation: p.observation,
+                        quantity: p.quantity,
+                        increase_percent: parseFloat(p.increase_percent || 0),
+                        discount_percent: parseFloat(p.discount_percent || 0),
+                        sub_items: p.sub_items
+                    }))
+                };
+
+                const res = await axios.post('/api/v1/sales/orders', payload);
+                const savedOrder = res.data;
+                currentId = savedOrder.id;
+                setBudgetId(currentId);
+                notify('success', 'Orçamento/Pedido gravado! Abrindo WhatsApp...');
+            } catch (err) {
+                notify('error', 'Erro ao gravar orçamento para envio.');
+                setLoading(false);
+                return;
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        const foundCust = customers.find(c => c.id === customerId) || { name: selectedCustomerName };
+        sendWhatsApp({
+            id: currentId,
+            customer: foundCust,
+            total_value: totalValue,
+            items: peças,
+            status: isOrder ? 'confirmed' : 'draft'
+        });
     };
 
     const handleCustomerSelected = (customer) => {
@@ -1044,17 +1101,8 @@ const BudgetScreen = () => {
                 <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
                     <button
                         type="button"
-                        disabled={peças.length === 0 || !customerId}
-                        onClick={() => {
-                            const foundCust = customers.find(c => c.id === customerId) || { name: selectedCustomerName };
-                            sendWhatsApp({
-                                id: budgetId,
-                                customer: foundCust,
-                                total_value: totalValue,
-                                items: peças,
-                                status: isOrder ? 'confirmed' : 'draft'
-                            });
-                        }}
+                        disabled={peças.length === 0 || !customerId || loading}
+                        onClick={handleWhatsAppClick}
                         className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition shadow-md flex items-center gap-2 disabled:opacity-40"
                         title="Enviar resumo do pedido com link do PDF via WhatsApp"
                     >

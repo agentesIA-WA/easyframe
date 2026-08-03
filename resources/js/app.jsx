@@ -56,7 +56,7 @@ const AppRoutes = () => {
     const pathname = window.location.pathname;
 
     useEffect(() => {
-        if (!isAuthenticated && pathname !== '/') {
+        if (!isAuthenticated && pathname !== '/' && !(pathname.startsWith('/orders/') && pathname.endsWith('/print'))) {
             window.location.href = '/';
         }
 
@@ -66,6 +66,9 @@ const AppRoutes = () => {
                 .catch(err => console.error(err));
         }
     }, [isAuthenticated, pathname]);
+
+    // Rota pública para visualização e impressão da OS / PDF enviado aos clientes
+    if (pathname.startsWith('/orders/') && pathname.endsWith('/print')) return <PrintOS />;
 
     if (!isAuthenticated) return <Login />;
 
@@ -148,7 +151,6 @@ const AppRoutes = () => {
     );
     if (pathname === '/inventory') return <ProtectedRoute module="inventory" title="Estoque"><Layout title="Gestão > Estoque"><InventoryList /></Layout></ProtectedRoute>;
     if (pathname === '/orders') return <ProtectedRoute module="orders" title="Pedidos"><Layout title="Comercial > Pedidos"><OrderList /></Layout></ProtectedRoute>;
-    if (pathname.startsWith('/orders/') && pathname.endsWith('/print')) return <PrintOS />;
 
     return (
         <Layout title="Dashboard Geral">
