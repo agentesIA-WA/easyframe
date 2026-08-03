@@ -36,8 +36,9 @@ export const sendWhatsApp = (item) => {
 
     const accessKey = item.uuid || item.id;
     if (accessKey) {
-        const printUrl = `${window.location.origin}/orders/${accessKey}/print`;
-        message += `📄 *Visualize / Baixe o Documento em PDF completo aqui:*\n${printUrl}\n\n`;
+        const baseUrl = window.location.origin;
+        const printUrl = `${baseUrl}/orders/${accessKey}/print`;
+        message += `📄 *Visualize o Documento em PDF completo:*\n\n${printUrl}\n\n`;
     }
 
     message += `Qualquer dúvida, estamos à disposição! 🖼️✨`;
