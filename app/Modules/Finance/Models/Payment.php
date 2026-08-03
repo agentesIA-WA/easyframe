@@ -9,6 +9,10 @@ class Payment extends BaseModel
 {
     use SoftDeletes;
 
+    protected $attributes = [
+        'paid_value' => 0.00,
+    ];
+
     protected $fillable = [
         'order_id', 
         'parent_id', 
