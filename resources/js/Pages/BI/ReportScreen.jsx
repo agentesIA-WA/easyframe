@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import SettleOrderModal from '../../Components/Modals/SettleOrderModal';
 import { useNotification } from '../../Contexts/NotificationContext';
+import { useAuth } from '../../Contexts/AuthContext';
 import { formatDate } from '../../utils/formatters';
 
 const getTodayFormatted = () => {
@@ -28,6 +30,7 @@ const getLastDayOfMonth = () => {
 
 const ReportScreen = () => {
     const { notify } = useNotification();
+    const { activeStore } = useAuth();
     const getInitialReportType = () => {
         const params = new URLSearchParams(window.location.search);
         return params.get('type') || 'daily-movement';
@@ -73,14 +76,11 @@ const ReportScreen = () => {
                 endpoint += `?start_date=${startDate}&end_date=${startDate}`;
             }
 
-            const token = localStorage.getItem('token');
-            const response = await fetch(endpoint, {
-                headers: {
-                    'Authorization': token ? `Bearer ${token}` : '',
-                    'Accept': 'application/json'
-                }
+            const storeIdHeader = activeStore?.id || localStorage.getItem('active_store_id');
+            const response = await axios.get(endpoint, {
+                headers: storeIdHeader ? { 'X-Store-Id': storeIdHeader } : {}
             });
-            const data = await response.json();
+            const data = response.data;
 
             if (reportType === 'daily-movement') {
                 setReportData(data.data || []);
@@ -126,7 +126,7 @@ const ReportScreen = () => {
         setSearchTerm('');
         setSortColumn(null);
         fetchReport();
-    }, [reportType, startDate, endDate, isAllDates]);
+    }, [reportType, startDate, endDate, isAllDates, activeStore?.id]);
 
     const shiftPeriod = (direction) => {
         setIsAllDates(false);

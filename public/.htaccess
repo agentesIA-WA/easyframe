@@ -1,10 +1,10 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Forçar HTTPS na Locaweb quando acessado por HTTP
+    # Forçar HTTPS na Locaweb quando acessado por HTTP (R=307 preserva método POST/PUT)
     RewriteCond %{HTTP:X-Forwarded-Proto} !https
     RewriteCond %{HTTPS} off
-    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=307]
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .

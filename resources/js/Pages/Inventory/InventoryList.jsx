@@ -191,26 +191,26 @@ const InventoryList = () => {
 
     return (
         <>
-            <div className="max-w-[1400px] mx-auto space-y-4">
+            <div className="w-full max-w-[1400px] mx-auto space-y-4">
                 <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
-                    <div className="bg-slate-800 text-white px-4 py-2 flex flex-col md:flex-row justify-between items-center gap-2">
-                        <div className="flex items-center gap-2">
+                    <div className="bg-slate-800 text-white px-4 py-2 flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <h1 className="text-xs font-black uppercase tracking-widest">SCR-008: Controle de Estoque</h1>
                             {selectedIds.length > 0 && (
-                                <span className="bg-primary-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                                <span className="bg-primary-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase shadow-xs">
                                     {selectedIds.length} selecionado(s)
                                 </span>
                             )}
                         </div>
-                        <div className="flex flex-col md:flex-row gap-2 items-center">
-                            <div className="relative">
+                        <div className="flex flex-wrap gap-2 items-center w-full md:w-auto justify-end">
+                            <div className="relative w-full sm:w-auto grow md:grow-0">
                                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                     <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                 </span>
                                 <input 
                                     type="text" 
                                     placeholder="Pesquisar..." 
-                                    className="pl-8 pr-4 py-1.5 bg-slate-700/50 border border-slate-600 rounded text-xs focus:ring-primary-500 focus:border-primary-500 w-full md:w-64 text-white placeholder-slate-400"
+                                    className="pl-8 pr-4 py-1.5 bg-slate-700/50 border border-slate-600 rounded text-xs focus:ring-primary-500 focus:border-primary-500 w-full sm:w-56 text-white placeholder-slate-400"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                 />
@@ -250,10 +250,10 @@ const InventoryList = () => {
                     </div>
 
                     <div className="overflow-x-auto scroller-thin">
-                        <table className="w-full min-w-[750px] text-left border-collapse">
+                        <table className="w-full text-left border-collapse table-auto">
                             <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th className="px-3 py-3 w-8 text-center">
+                                    <th className="px-2.5 py-2.5 w-8 text-center">
                                         <input 
                                             type="checkbox"
                                             className="rounded border-slate-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
@@ -262,25 +262,25 @@ const InventoryList = () => {
                                             title="Selecionar Todos os Produtos"
                                         />
                                     </th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('code')}>
+                                    <th className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('code')}>
                                         Código <SortIcon field="code" />
                                     </th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('category.name')}>
+                                    <th className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('category.name')}>
                                         Categoria <SortIcon field="category.name" />
                                     </th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('name')}>
+                                    <th className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('name')}>
                                         Produto <SortIcon field="name" />
                                     </th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('unit_price')}>
+                                    <th className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('unit_price')}>
                                         Preço de Venda <SortIcon field="unit_price" />
                                     </th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('total_in')}>
+                                    <th className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('total_in')}>
                                         Entradas <SortIcon field="total_in" />
                                     </th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('stock_balance')}>
+                                    <th className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('stock_balance')}>
                                         Saldo Atual <SortIcon field="stock_balance" />
                                     </th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Ações</th>
+                                    <th className="px-2.5 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -292,7 +292,7 @@ const InventoryList = () => {
                                     const isSelected = selectedIds.includes(item.id);
                                     return (
                                         <tr key={item.id} className={`transition-colors ${isSelected ? 'bg-amber-50/60' : 'hover:bg-slate-50/80'}`}>
-                                            <td className="px-3 py-3 text-center">
+                                            <td className="px-2.5 py-2.5 text-center">
                                                 <input 
                                                     type="checkbox"
                                                     className="rounded border-slate-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
@@ -300,20 +300,20 @@ const InventoryList = () => {
                                                     onChange={() => toggleSelectProduct(item.id)}
                                                 />
                                             </td>
-                                            <td className="px-4 py-3 font-mono text-[10px] text-slate-500 font-bold whitespace-nowrap">{item.code}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-black uppercase shadow-sm">
+                                            <td className="px-2.5 py-2.5 font-mono text-[10px] text-slate-500 font-bold whitespace-nowrap">{item.code}</td>
+                                            <td className="px-2.5 py-2.5 whitespace-nowrap">
+                                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-black uppercase shadow-2xs truncate max-w-[120px] inline-block align-middle" title={item.category?.name || 'Geral'}>
                                                     {item.category?.name || 'Geral'}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 font-bold text-slate-800 uppercase text-xs whitespace-nowrap">{item.name}</td>
-                                            <td className="px-4 py-3 text-right whitespace-nowrap font-mono text-xs font-bold text-slate-900">
+                                            <td className="px-2.5 py-2.5 font-bold text-slate-800 uppercase text-xs min-w-[140px] max-w-[280px]" title={item.name}>{item.name}</td>
+                                            <td className="px-2.5 py-2.5 text-right whitespace-nowrap font-mono text-xs font-bold text-slate-900">
                                                 R$ {parseFloat(item.unit_price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
-                                            <td className="px-4 py-3 text-center whitespace-nowrap font-mono text-xs font-bold text-slate-600">
+                                            <td className="px-2.5 py-2.5 text-center whitespace-nowrap font-mono text-xs font-bold text-slate-600">
                                                 {parseFloat(item.total_in || 0).toFixed(2)} <span className="text-[10px] text-slate-400 font-black uppercase">{getUnitLabel(item)}</span>
                                             </td>
-                                            <td className="px-4 py-3 text-center whitespace-nowrap">
+                                            <td className="px-2.5 py-2.5 text-center whitespace-nowrap">
                                                 <span className={`font-black text-sm font-mono ${(item.stock_balance || 0) < 0 ? 'text-rose-600' : (item.stock_balance || 0) < 5 ? 'text-amber-600' : 'text-emerald-600'}`}>
                                                     {parseFloat(item.stock_balance || 0).toFixed(2)}
                                                 </span>
@@ -321,9 +321,11 @@ const InventoryList = () => {
                                                     {getUnitLabel(item)}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 text-xs whitespace-nowrap text-center">
-                                                <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
-                                                    <button onClick={() => setViewingItem(item)} className="bg-blue-50 text-blue-600 px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-tighter hover:bg-blue-100 transition-colors">Visualizar</button>
+                                            <td className="px-2.5 py-2.5 text-xs whitespace-nowrap text-center">
+                                                <div className="flex items-center justify-center gap-1 whitespace-nowrap">
+                                                    <button onClick={() => setViewingItem(item)} title="Visualizar Detalhes" className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 hover:text-blue-800 transition-colors">
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>

@@ -166,10 +166,14 @@ const ExpenseSubtypes = () => {
                                     <td className="px-4 py-2 text-xs">
                                         <span className="px-1.5 py-0.5 bg-green-50 text-green-600 border border-green-100 rounded text-[10px] font-black uppercase tracking-tighter">Ativo</span>
                                     </td>
-                                    <td className="px-4 py-2 text-xs">
-                                        <div className="flex gap-2">
-                                            <button onClick={() => handleOpenModal(s)} className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tighter hover:bg-slate-200">Editar</button>
-                                            <button onClick={() => handleDelete(s.id)} className="bg-red-50 text-red-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tighter hover:bg-red-100">Excluir</button>
+                                    <td className="px-4 py-2 text-xs whitespace-nowrap">
+                                        <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                            <button onClick={() => handleOpenModal(s)} title="Editar Subtipo" className="p-1.5 bg-amber-50 text-amber-600 rounded hover:bg-amber-100 hover:text-amber-800 transition-colors">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            </button>
+                                            <button onClick={() => handleDelete(s.id)} title="Excluir Subtipo" className="p-1.5 bg-rose-50 text-rose-600 rounded hover:bg-rose-100 hover:text-rose-800 transition-colors">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>

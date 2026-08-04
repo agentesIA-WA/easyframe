@@ -17,6 +17,77 @@ const NavItem = ({ href, icon, label, onClick }) => {
     );
 };
 
+const StoreDropdown = () => {
+    const { activeStore, allowedStores, switchStore } = useAuth();
+    const [open, setOpen] = useState(false);
+
+    if (!allowedStores || allowedStores.length === 0) return null;
+
+    const currentName = activeStore?.name || activeStore?.company_name || 'Loja Matriz';
+
+    return (
+        <div className="relative mr-4">
+            <button
+                onClick={() => allowedStores.length > 1 && setOpen(!open)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition text-xs font-bold ${
+                    allowedStores.length > 1 
+                        ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800 cursor-pointer shadow-sm' 
+                        : 'bg-slate-50 border-slate-200 text-slate-600 cursor-default'
+                }`}
+                title={allowedStores.length > 1 ? 'Clique para alternar a Loja / Identidade' : 'Sua loja ativa'}
+            >
+                <svg className="w-4 h-4 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <span className="truncate max-w-[140px] uppercase tracking-wide">{currentName}</span>
+                {allowedStores.length > 1 && (
+                    <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                )}
+            </button>
+
+            {open && allowedStores.length > 1 && (
+                <>
+                    <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+                        <div className="px-3 py-1.5 border-b border-slate-100 bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            Alternar Identidade Corporativa
+                        </div>
+                        {allowedStores.map(store => {
+                            const isCurrent = store.id === activeStore?.id;
+                            return (
+                                <button
+                                    key={store.id}
+                                    onClick={() => {
+                                        setOpen(false);
+                                        if (!isCurrent) switchStore(store.id);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition ${
+                                        isCurrent 
+                                            ? 'bg-indigo-50 text-indigo-700 font-black' 
+                                            : 'hover:bg-slate-50 text-slate-700 font-semibold'
+                                    }`}
+                                >
+                                    <div>
+                                        <div className="uppercase">{store.name}</div>
+                                        {store.company_name && store.company_name !== store.name && (
+                                            <div className="text-[10px] text-slate-400 font-normal">{store.company_name}</div>
+                                        )}
+                                    </div>
+                                    {isCurrent && (
+                                        <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
 const Layout = ({ children, title }) => {
     const { user, isAdmin, hasAccess, logout } = useAuth();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -59,6 +130,7 @@ const Layout = ({ children, title }) => {
         {
             label: 'Sistema',
             items: [
+                { href: '/stores', label: 'Lojas / Identidades', module: 'settings', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
                 { href: '/settings', label: 'Configurações Globais', module: 'settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z' },
                 { href: '/permissions', label: 'Controle de Acesso', module: 'permissions', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
             ]
@@ -120,13 +192,11 @@ const Layout = ({ children, title }) => {
             {/* Mobile Drawer (Menu Responsivo Lateral) */}
             {mobileMenuOpen && (
                 <div className="fixed inset-0 z-[200] flex md:hidden">
-                    {/* Backdrop escuro */}
                     <div 
                         className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
                         onClick={() => setMobileMenuOpen(false)}
                     />
 
-                    {/* Gaveta lateral */}
                     <div className="relative flex-1 flex flex-col max-w-xs w-full bg-slate-900 text-slate-300 z-10 shadow-2xl animate-[slideRight_0.2s_ease-out]">
                         <div className="p-5 flex justify-between items-center border-b border-slate-800">
                             <a href="/dashboard" className="block focus:outline-none">
@@ -206,6 +276,7 @@ const Layout = ({ children, title }) => {
                     </div>
 
                     <div className="flex items-center">
+                        <StoreDropdown />
                         <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-xs border border-primary-200">
                             {userInitials}
                         </div>

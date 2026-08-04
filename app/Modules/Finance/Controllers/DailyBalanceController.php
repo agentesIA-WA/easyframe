@@ -10,9 +10,19 @@ use Illuminate\Support\Facades\DB;
 
 class DailyBalanceController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(DailyBalance::with('user')->orderBy('date', 'desc')->paginate(30));
+        $query = DailyBalance::with('user');
+        $storeId = $request->header('X-Store-Id');
+        if ($storeId) {
+            $query->where(function($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+                if ((int)$storeId === 1) {
+                    $q->orWhereNull('store_id');
+                }
+            });
+        }
+        return response()->json($query->orderBy('date', 'desc')->paginate(30));
     }
 
     /**

@@ -13,6 +13,16 @@ class ExpenseController extends Controller
     {
         $query = Expense::with('type');
 
+        $storeId = $request->header('X-Store-Id');
+        if ($storeId) {
+            $query->where(function($q) use ($storeId) {
+                $q->where('expenses.store_id', $storeId);
+                if ((int)$storeId === 1) {
+                    $q->orWhereNull('expenses.store_id');
+                }
+            });
+        }
+
         if ($request->has('search')) {
             $search = $request->get('search');
             $query->where(function($q) use ($search) {
@@ -50,6 +60,9 @@ class ExpenseController extends Controller
             'due_date' => 'required|date',
             'status' => 'required|in:pending,paid',
         ]);
+
+        $storeId = $request->header('X-Store-Id') ? (int)$request->header('X-Store-Id') : 1;
+        $validated['store_id'] = $storeId;
 
         $expense = Expense::create($validated);
         return response()->json($expense->load('type'), 201);

@@ -8,6 +8,7 @@ import ViewModal from '../../Components/Modals/ViewModal';
 
 const EmployeeList = () => {
     const [employees, setEmployees] = useState([]);
+    const [stores, setStores] = useState([]);
     const [loading, setLoading] = useState(true);
     const [meta, setMeta] = useState(null);
     const [search, setSearch] = useState('');
@@ -21,10 +22,23 @@ const EmployeeList = () => {
         name: '',
         tax_id: '',
         role: '',
+        store_id: '',
+        store_ids: [],
         hired_at: '',
         can_sell: false,
         is_molder: false
     });
+
+    const fetchStores = async () => {
+        try {
+            const response = await axios.get('/api/v1/core/stores');
+            if (Array.isArray(response.data)) {
+                setStores(response.data);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar lojas:', error);
+        }
+    };
 
     const fetchEmployees = async (page = 1, searchTerm = search, sortField = sortBy, direction = sortDir) => {
         setLoading(true);
@@ -39,6 +53,10 @@ const EmployeeList = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchStores();
+    }, []);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -62,10 +80,15 @@ const EmployeeList = () => {
     const handleOpenModal = (employee = null) => {
         if (employee) {
             setEditingEmployee(employee);
+            const initialStoreIds = employee.stores && employee.stores.length > 0 
+                ? employee.stores.map(s => Number(s.id)) 
+                : (employee.store_id ? [Number(employee.store_id)] : []);
             setFormData({
                 name: employee.name,
                 tax_id: maskCPF(employee.tax_id),
                 role: employee.role || '',
+                store_id: employee.store_id || '',
+                store_ids: initialStoreIds,
                 hired_at: employee.hired_at ? employee.hired_at.split('T')[0] : '',
                 can_sell: !!employee.can_sell,
                 is_molder: !!employee.is_molder
@@ -76,6 +99,8 @@ const EmployeeList = () => {
                 name: '',
                 tax_id: '',
                 role: '',
+                store_id: stores.length > 0 ? Number(stores[0].id) : '',
+                store_ids: stores.map(s => Number(s.id)),
                 hired_at: '',
                 can_sell: false,
                 is_molder: false
@@ -100,7 +125,9 @@ const EmployeeList = () => {
         e.preventDefault();
         const dataToSave = {
             ...formData,
-            tax_id: unmask(formData.tax_id)
+            tax_id: unmask(formData.tax_id),
+            store_ids: formData.store_ids,
+            store_id: formData.store_ids && formData.store_ids.length > 0 ? formData.store_ids[0] : null
         };
         try {
             if (editingEmployee) {
@@ -118,7 +145,7 @@ const EmployeeList = () => {
     };
 
     return (
-        <div className="max-w-[1400px] mx-auto space-y-4">
+        <div className="w-full max-w-[1400px] mx-auto space-y-4">
             <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
                 <div className="bg-slate-800 text-white px-4 py-2 flex flex-col md:flex-row justify-between items-center gap-2">
                     <h1 className="text-xs font-black uppercase tracking-widest">Gestão de RH (Funcionários)</h1>
@@ -145,47 +172,71 @@ const EmployeeList = () => {
                 </div>
 
                 <div className="overflow-x-auto scroller-thin">
-                    <table className="w-full min-w-[800px] text-left border-collapse">
+                    <table className="w-full text-left border-collapse table-auto">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th onClick={() => handleSort('name')} className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
+                                <th onClick={() => handleSort('name')} className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
                                     Nome <SortIcon field="name" />
                                 </th>
-                                <th onClick={() => handleSort('role')} className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
+                                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                                    Unidade / Loja
+                                </th>
+                                <th onClick={() => handleSort('role')} className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
                                     Cargo <SortIcon field="role" />
                                 </th>
-                                <th onClick={() => handleSort('tax_id')} className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
+                                <th onClick={() => handleSort('tax_id')} className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
                                     CPF <SortIcon field="tax_id" />
                                 </th>
-                                <th onClick={() => handleSort('hired_at')} className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
+                                <th onClick={() => handleSort('hired_at')} className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">
                                     Admissão <SortIcon field="hired_at" />
                                 </th>
-                                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Permissões</th>
-                                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Ações</th>
+                                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Permissões</th>
+                                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
-                                <tr><td colSpan="6" className="text-center py-8 text-xs text-slate-500 italic">Carregando...</td></tr>
+                                <tr><td colSpan="7" className="text-center py-8 text-xs text-slate-500 italic">Carregando...</td></tr>
                             ) : employees.length === 0 ? (
-                                <tr><td colSpan="6" className="text-center py-8 text-xs text-slate-500">Nenhum funcionário cadastrado.</td></tr>
+                                <tr><td colSpan="7" className="text-center py-8 text-xs text-slate-500">Nenhum funcionário cadastrado.</td></tr>
                             ) : employees.map(e => (
                                 <tr key={e.id} className="hover:bg-slate-50/80 transition-colors">
-                                    <td className="px-4 py-3 text-xs font-bold text-slate-800 uppercase whitespace-nowrap">{e.name}</td>
-                                    <td className="px-4 py-3 text-xs text-slate-600 uppercase whitespace-nowrap">{e.role}</td>
-                                    <td className="px-4 py-3 font-mono text-xs text-slate-500 whitespace-nowrap">{maskCPF(e.tax_id)}</td>
-                                    <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{formatDate(e.hired_at)}</td>
-                                    <td className="px-4 py-3 whitespace-nowrap">
+                                    <td className="px-3 py-2.5 text-xs font-bold text-slate-800 uppercase min-w-[130px] max-w-[200px] truncate" title={e.name}>{e.name}</td>
+                                    <td className="px-3 py-2.5 text-xs min-w-[150px] max-w-[260px]">
+                                        <div className="flex flex-wrap gap-1 max-w-[250px]">
+                                            {e.stores && e.stores.length > 0 ? (
+                                                e.stores.map(s => (
+                                                    <span key={s.id} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
+                                                        🏢 {s.name}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs">
+                                                    🏢 {e.store?.name || 'Matriz / Geral'}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-xs text-slate-600 uppercase min-w-[100px] max-w-[160px] truncate" title={e.role}>{e.role}</td>
+                                    <td className="px-3 py-2.5 font-mono text-xs text-slate-500 whitespace-nowrap">{maskCPF(e.tax_id)}</td>
+                                    <td className="px-3 py-2.5 text-xs text-slate-500 whitespace-nowrap">{formatDate(e.hired_at)}</td>
+                                    <td className="px-3 py-2.5 whitespace-nowrap">
                                         <div className="flex justify-center gap-1 whitespace-nowrap">
                                             {e.can_sell && <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter border border-blue-100 shadow-sm">Venda</span>}
                                             {e.is_molder && <span className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter border border-orange-100 shadow-sm">Produção</span>}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-xs whitespace-nowrap">
-                                        <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                            <button onClick={() => setViewingEmployee(e)} className="bg-blue-50 text-blue-600 px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-tighter hover:bg-blue-100 transition-colors">Visualizar</button>
-                                            <button onClick={() => handleOpenModal(e)} className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-tighter hover:bg-slate-200 transition-colors">Editar</button>
-                                            <button onClick={() => handleDelete(e.id)} className="bg-red-50 text-red-600 px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-tighter hover:bg-red-100 transition-colors">Remover</button>
+                                    <td className="px-3 py-2.5 text-xs whitespace-nowrap text-center">
+                                        <div className="flex items-center justify-center gap-1 whitespace-nowrap">
+                                            <button onClick={() => setViewingEmployee(e)} title="Visualizar Detalhes" className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 hover:text-blue-800 transition-colors">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            </button>
+                                            <button onClick={() => handleOpenModal(e)} title="Editar Funcionário" className="p-1.5 bg-amber-50 text-amber-600 rounded hover:bg-amber-100 hover:text-amber-800 transition-colors">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            </button>
+                                            <button onClick={() => handleDelete(e.id)} title="Excluir Funcionário" className="p-1.5 bg-rose-50 text-rose-600 rounded hover:bg-rose-100 hover:text-rose-800 transition-colors">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -207,21 +258,53 @@ const EmployeeList = () => {
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
                             <div>
                                 <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nome Completo</label>
-                                <input type="text" required className="w-full border-slate-200 rounded-lg" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
+                                <input type="text" required className="w-full border-slate-200 rounded-lg text-sm" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
                             </div>
+                            
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Unidades de Atuação (Lojas)</label>
+                                <div className="space-y-2 max-h-36 overflow-y-auto border border-slate-200 rounded-lg p-3 bg-slate-50">
+                                    {stores.map(store => {
+                                        const storeIdNum = Number(store.id);
+                                        const isChecked = formData.store_ids?.some(id => Number(id) === storeIdNum);
+                                        return (
+                                            <label key={store.id} className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 hover:text-slate-900">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={(e) => {
+                                                        const currentIds = (formData.store_ids || []).map(Number);
+                                                        const newStoreIds = e.target.checked
+                                                            ? [...new Set([...currentIds, storeIdNum])]
+                                                            : currentIds.filter(id => id !== storeIdNum);
+                                                        setFormData({
+                                                            ...formData,
+                                                            store_ids: newStoreIds,
+                                                            store_id: newStoreIds[0] || ''
+                                                        });
+                                                    }}
+                                                    className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                                                />
+                                                <span>🏢 {store.name} {store.code ? `(${store.code})` : ''}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold uppercase text-slate-500 mb-1">CPF</label>
-                                    <input type="text" required className="w-full border-slate-200 rounded-lg" value={formData.tax_id} onChange={(e) => setFormData({...formData, tax_id: maskCPF(e.target.value)})} />
+                                    <input type="text" required className="w-full border-slate-200 rounded-lg text-sm" value={formData.tax_id} onChange={(e) => setFormData({...formData, tax_id: maskCPF(e.target.value)})} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Cargo</label>
-                                    <input type="text" className="w-full border-slate-200 rounded-lg" value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} />
+                                    <input type="text" className="w-full border-slate-200 rounded-lg text-sm" value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} />
                                 </div>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Data de Admissão</label>
-                                <input type="date" className="w-full border-slate-200 rounded-lg" value={formData.hired_at} onChange={(e) => setFormData({...formData, hired_at: e.target.value})} />
+                                <input type="date" className="w-full border-slate-200 rounded-lg text-sm" value={formData.hired_at} onChange={(e) => setFormData({...formData, hired_at: e.target.value})} />
                             </div>
                             <div className="flex gap-6 pt-2">
                                 <label className="flex items-center gap-2 cursor-pointer">
@@ -249,6 +332,7 @@ const EmployeeList = () => {
                 data={viewingEmployee} 
                 fields={[
                     { key: 'name', label: 'Nome Completo' },
+                    { key: 'stores', label: 'Unidades de Atuação', format: (val, row) => row?.stores?.length ? row.stores.map(s => s.name).join(', ') : (row?.store?.name || 'Matriz / Geral') },
                     { key: 'tax_id', label: 'CPF', format: (val) => maskCPF(val || '') },
                     { key: 'role', label: 'Cargo' },
                     { key: 'hired_at', label: 'Data de Admissão', format: (val) => formatDate(val) },

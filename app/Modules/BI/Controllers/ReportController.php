@@ -10,20 +10,38 @@ use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
-    public function dashboard()
+    public function dashboard(Request $request)
     {
-        $totalSales = Order::where('status', '!=', 'draft')->sum('total_value');
-        $pendingOrders = Order::where('status', 'production')->count();
-        $readyOrders = Order::where('status', 'ready')->count();
+        $storeId = $request->header('X-Store-Id');
         
-        // Vendas do mês atual vs anterior para cálculo de crescimento
-        $currentMonth = Order::where('status', '!=', 'draft')
-            ->whereMonth('created_at', now()->month)
-            ->sum('total_value');
-            
-        $lastMonth = Order::where('status', '!=', 'draft')
-            ->whereMonth('created_at', now()->subMonth()->month)
-            ->sum('total_value');
+        $salesQuery = Order::where('status', '!=', 'draft');
+        $pendingQuery = Order::where('status', 'production');
+        $readyQuery = Order::where('status', 'ready');
+        $currentMonthQuery = Order::where('status', '!=', 'draft')->whereMonth('created_at', now()->month);
+        $lastMonthQuery = Order::where('status', '!=', 'draft')->whereMonth('created_at', now()->subMonth()->month);
+
+        if ($storeId) {
+            $applyStore = function($q) use ($storeId) {
+                $q->where(function($sq) use ($storeId) {
+                    $sq->where('store_id', $storeId);
+                    if ((int)$storeId === 1) {
+                        $sq->orWhereNull('store_id');
+                    }
+                });
+            };
+            $applyStore($salesQuery);
+            $applyStore($pendingQuery);
+            $applyStore($readyQuery);
+            $applyStore($currentMonthQuery);
+            $applyStore($lastMonthQuery);
+        }
+
+        $totalSales = $salesQuery->sum('total_value');
+        $pendingOrders = $pendingQuery->count();
+        $readyOrders = $readyQuery->count();
+        
+        $currentMonth = $currentMonthQuery->sum('total_value');
+        $lastMonth = $lastMonthQuery->sum('total_value');
             
         $growth = 0;
         if ($lastMonth > 0) {
@@ -81,6 +99,16 @@ class ReportController extends Controller
 
         $query = Order::where('status', '!=', 'draft')
             ->with(['customer', 'items', 'payments', 'seller']);
+
+        $storeId = $request->header('X-Store-Id');
+        if ($storeId) {
+            $query->where(function($q) use ($storeId) {
+                $q->where('orders.store_id', $storeId);
+                if ((int)$storeId === 1) {
+                    $q->orWhereNull('orders.store_id');
+                }
+            });
+        }
 
         if (!$isAdmin) {
             $employee = $this->getEmployeeForUser($user);
@@ -179,6 +207,16 @@ class ReportController extends Controller
     {
         $query = Order::where('status', '!=', 'draft')->with(['payments', 'customer']);
 
+        $storeId = $request->header('X-Store-Id');
+        if ($storeId) {
+            $query->where(function($q) use ($storeId) {
+                $q->where('orders.store_id', $storeId);
+                if ((int)$storeId === 1) {
+                    $q->orWhereNull('orders.store_id');
+                }
+            });
+        }
+
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $start = \Carbon\Carbon::parse($request->start_date)->startOfDay();
             $end = \Carbon\Carbon::parse($request->end_date)->endOfDay();
@@ -194,6 +232,16 @@ class ReportController extends Controller
         $isAdmin = $user ? (bool) ($user->is_admin || $user->id === 1) : false;
 
         $vendedoresQuery = \App\Modules\HR\Models\Employee::query();
+        if ($storeId) {
+            $vendedoresQuery->where(function($q) use ($storeId) {
+                $q->whereHas('stores', function($sq) use ($storeId) {
+                    $sq->where('stores.id', $storeId);
+                })->orWhere('store_id', $storeId);
+                if ((int)$storeId === 1) {
+                    $q->orWhereNull('store_id');
+                }
+            });
+        }
 
         if (!$isAdmin) {
             $employee = $this->getEmployeeForUser($user);
@@ -320,11 +368,24 @@ class ReportController extends Controller
         $user = $this->resolveUser($request);
         $isAdmin = $user ? (bool) ($user->is_admin || $user->id === 1) : false;
 
+        $storeId = $request->header('X-Store-Id');
+
         $query = Payment::where('status', 'A')
             ->with(['order.customer'])
             ->whereHas('order', function ($q) {
                 $q->where('status', '!=', 'draft');
             });
+
+        if ($storeId) {
+            $query->whereHas('order', function($q) use ($storeId) {
+                $q->where(function($sq) use ($storeId) {
+                    $sq->where('orders.store_id', $storeId);
+                    if ((int)$storeId === 1) {
+                        $sq->orWhereNull('orders.store_id');
+                    }
+                });
+            });
+        }
 
         if (!$isAdmin) {
             $employee = $this->getEmployeeForUser($user);
@@ -380,6 +441,16 @@ class ReportController extends Controller
 
         $query = \App\Modules\Finance\Models\Expense::with('type');
 
+        $storeId = $request->header('X-Store-Id');
+        if ($storeId) {
+            $query->where(function($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+                if ((int)$storeId === 1) {
+                    $q->orWhereNull('store_id');
+                }
+            });
+        }
+
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $start = \Carbon\Carbon::parse($request->start_date)->startOfDay();
             $end = \Carbon\Carbon::parse($request->end_date)->endOfDay();
@@ -425,6 +496,24 @@ class ReportController extends Controller
         $inflowQuery = Payment::where('status', 'P');
         $outflowQuery = \App\Modules\Finance\Models\Expense::query();
 
+        $storeId = $request->header('X-Store-Id');
+        if ($storeId) {
+            $inflowQuery->whereHas('order', function($q) use ($storeId) {
+                $q->where(function($sq) use ($storeId) {
+                    $sq->where('orders.store_id', $storeId);
+                    if ((int)$storeId === 1) {
+                        $sq->orWhereNull('orders.store_id');
+                    }
+                });
+            });
+            $outflowQuery->where(function($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+                if ((int)$storeId === 1) {
+                    $q->orWhereNull('store_id');
+                }
+            });
+        }
+
         $user = $this->resolveUser($request);
         $isAdmin = $user ? (bool) ($user->is_admin || $user->id === 1) : false;
 
@@ -463,6 +552,16 @@ class ReportController extends Controller
 
         $query = Order::where('status', '!=', 'draft')
             ->with(['customer', 'seller', 'framer', 'items', 'payments']);
+
+        $storeId = $request->header('X-Store-Id');
+        if ($storeId) {
+            $query->where(function($q) use ($storeId) {
+                $q->where('orders.store_id', $storeId);
+                if ((int)$storeId === 1) {
+                    $q->orWhereNull('orders.store_id');
+                }
+            });
+        }
 
         if (!$isAdmin) {
             $employee = $this->getEmployeeForUser($user);

@@ -475,22 +475,37 @@ const BudgetScreen = () => {
                 return;
             }
 
+            const grandTotal = calculateGrandTotal();
             setLoading(true);
             try {
                 const payload = {
                     customer_id: customerId,
                     seller_id: sellerId,
-                    framer_id: framerId || null,
                     status: isOrder ? 'confirmed' : 'draft',
-                    payment_terms: isOrder ? 'CONFORME REGISTRO' : 'A DEFINIR',
-                    discount: generalDiscount,
-                    delivery_date: deliveryDate ? `${deliveryDate}${deliveryTime ? ' ' + deliveryTime + ':00' : ''}` : null,
-                    payments: isOrder ? paymentList : [],
+                    payments: paymentList.map((p) => {
+                        const selectedPm = paymentMethods.find(m => m.id == p.payment_method_id);
+                        const val = parseFloat(p.value);
+                        return {
+                            payment_method_id: p.payment_method_id || null,
+                            payment_method: selectedPm ? selectedPm.description : null,
+                            value: isNaN(val) || val <= 0 ? (paymentList.length === 1 ? grandTotal : 0) : val,
+                            installments: parseInt(p.installments || 1),
+                            is_paid: p.is_paid !== undefined ? p.is_paid : isOrder,
+                            card_brand: p.card_brand || null,
+                            cheque_type: p.cheque_type,
+                            cheque_numbers: p.cheque_numbers,
+                            cheque_agencies: p.cheque_agencies,
+                            cheque_accounts: p.cheque_accounts,
+                            observation: p.observation || null
+                        };
+                    }),
+                    payment_method_id: paymentList[0]?.payment_method_id || null,
+                    delivery_date: deliveryDate ? `${deliveryDate}T${deliveryTime || '00:00'}:00` : null,
                     items: peças.map(p => ({
                         description: p.description,
+                        observation: p.observation,
                         height: p.height,
                         width: p.width,
-                        observation: p.observation,
                         quantity: p.quantity,
                         increase_percent: parseFloat(p.increase_percent || 0),
                         discount_percent: parseFloat(p.discount_percent || 0),
@@ -506,7 +521,8 @@ const BudgetScreen = () => {
                 if (currentUuid) setBudgetUuid(currentUuid);
                 notify('success', 'Orçamento/Pedido gravado! Abrindo WhatsApp...');
             } catch (err) {
-                notify('error', 'Erro ao gravar orçamento para envio.');
+                console.error('Erro ao gravar para WhatsApp:', err);
+                notify('error', err.response?.data?.message || 'Erro ao gravar orçamento para envio.');
                 setLoading(false);
                 return;
             } finally {

@@ -16,6 +16,16 @@ class OrderController extends Controller
     {
         $query = Order::with(['items.subItems', 'customer', 'seller', 'framer', 'payments', 'editLogs']);
 
+        $storeId = $request->header('X-Store-Id');
+        if ($storeId) {
+            $query->where(function($q) use ($storeId) {
+                $q->where('orders.store_id', $storeId);
+                if ((int)$storeId === 1) {
+                    $q->orWhereNull('orders.store_id');
+                }
+            });
+        }
+
         if ($request->has('status')) {
             if ($request->status === 'draft') {
                 $query->where('status', 'draft');
@@ -64,7 +74,9 @@ class OrderController extends Controller
     public function store(Request $request, PricingCalculator $calculator)
     {
         return DB::transaction(function () use ($request, $calculator) {
+            $storeId = $request->header('X-Store-Id') ? (int)$request->header('X-Store-Id') : 1;
             $order = Order::create([
+                'store_id' => $storeId,
                 'customer_id' => $request->customer_id,
                 'seller_id' => $request->seller_id,
                 'status' => $request->status ?? 'draft',
@@ -549,21 +561,43 @@ class OrderController extends Controller
         });
     }
 
-    public function printOS($orderKey)
+    private function resolveUser(Request $request): ?\App\Models\User
     {
+        $user = $request->user();
+        if ($user) {
+            return $user;
+        }
+
+        $token = $request->bearerToken();
+        if (!$token) {
+            return null;
+        }
+
+        try {
+            $decoded = \Firebase\JWT\JWT::decode($token, new \Firebase\JWT\Key(config('app.key'), 'HS256'));
+            return \App\Models\User::find($decoded->sub);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function printOS(Request $request, $orderKey)
+    {
+        $user = $this->resolveUser($request);
+        $isAuthenticated = !is_null($user);
         $isUuid = \Illuminate\Support\Str::isUuid($orderKey);
 
         // Segurança: Se o usuário NÃO está autenticado (acesso público via WhatsApp/link externo),
         // exige obrigatoriamente a chave UUID única de 36 caracteres.
         // Isso impede que qualquer pessoa tente alterar o ID sequencial na URL para acessar orçamentos de outros clientes.
-        if (!Auth::check() && !$isUuid) {
+        if (!$isAuthenticated && !$isUuid) {
             return response()->json([
                 'message' => 'Acesso negado. Para acessar o Orçamento/Pedido sem login, utilize o link de acesso seguro (UUID).'
             ], 403);
         }
 
         $order = Order::where('uuid', $orderKey)
-            ->when(Auth::check(), function ($query) use ($orderKey) {
+            ->when($isAuthenticated, function ($query) use ($orderKey) {
                 $cleanId = preg_replace('/[^0-9]/', '', (string)$orderKey);
                 if ($cleanId !== '') {
                     $query->orWhere('id', $cleanId)->orWhere('legacy_id', $cleanId);

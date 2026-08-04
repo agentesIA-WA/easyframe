@@ -173,7 +173,7 @@ export default function BudgetList() {
                 </div>
 
                 <div className="overflow-x-auto scroller-thin">
-                    <table className="w-full min-w-[800px] text-left border-collapse">
+                    <table className="w-full text-left border-collapse">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
                                 <th onClick={() => handleSort('id')} className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors">

@@ -43,4 +43,16 @@ Route::prefix('v1')->group(function () {
     if (file_exists($path = base_path('app/Modules/Core/Routes/api.php'))) {
         require $path;
     }
+
+    // Rota utilitária para limpeza de cache via navegador (para hospedagens sem terminal SSH)
+    Route::get('clear-cache', function () {
+        \Illuminate\Support\Facades\Artisan::call('route:clear');
+        \Illuminate\Support\Facades\Artisan::call('config:clear');
+        \Illuminate\Support\Facades\Artisan::call('cache:clear');
+        \Illuminate\Support\Facades\Artisan::call('view:clear');
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Caches zerados e rotas recarregadas com sucesso no servidor!'
+        ]);
+    });
 });

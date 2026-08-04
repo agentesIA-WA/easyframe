@@ -33,6 +33,7 @@ class SystemModuleSeeder extends Seeder
             // Sistema
             ['name' => 'settings', 'label' => 'Sistema > Configurações Globais'],
             ['name' => 'permissions', 'label' => 'Sistema > Controle de Acesso'],
+            ['name' => 'stores', 'label' => 'Sistema > Lojas / Identidades'],
             
             // Gestão
             ['name' => 'inventory', 'label' => 'Gestão > Estoque'],
@@ -40,7 +41,10 @@ class SystemModuleSeeder extends Seeder
         ];
 
         foreach ($modules as $module) {
-            SystemModule::updateOrCreate(['name' => $module['name']], $module);
+            SystemModule::updateOrCreate(
+                ['name' => $module['name']],
+                array_merge($module, ['is_active' => true])
+            );
         }
     }
 }

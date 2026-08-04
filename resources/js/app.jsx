@@ -24,6 +24,7 @@ import InventoryList from './Pages/Inventory/InventoryList';
 import OrderList from './Pages/Sales/OrderList';
 import PurchasesPage from './Pages/Customer/PurchasesPage';
 import GlobalSettings from './Pages/Support/GlobalSettings';
+import StoreManagementScreen from './Pages/Support/StoreManagementScreen';
 import UserPermissions from './Pages/Identity/UserPermissions';
 import PaymentMethods from './Pages/Finance/PaymentMethods';
 import DailyBalancePage from './Pages/Finance/DailyBalancePage';
@@ -132,6 +133,7 @@ const AppRoutes = () => {
     if (pathname === '/payment-methods') return <ProtectedRoute module="payment_methods" title="Formas de Pagamento"><Layout title="Financeiro > Formas de Pagamento"><PaymentMethods /></Layout></ProtectedRoute>;
 
     // Rotas de Sistema — apenas Admin
+    if (pathname === '/stores') return <ProtectedRoute module="stores" title="Lojas & Identidades"><StoreManagementScreen /></ProtectedRoute>;
     if (pathname === '/settings') return <ProtectedRoute module="settings" title="Configurações"><Layout title="Sistema > Configurações Globais"><GlobalSettings /></Layout></ProtectedRoute>;
     if (pathname === '/permissions') return <ProtectedRoute module="permissions" title="Controle de Acesso"><Layout title="Sistema > Controle de Acesso"><UserPermissions /></Layout></ProtectedRoute>;
 
@@ -156,8 +158,21 @@ const AppRoutes = () => {
         <Layout title="Dashboard Geral">
             <div className="max-w-6xl">
                 <div className="bg-gradient-to-r from-primary-600 to-indigo-700 rounded-2xl p-8 text-white shadow-2xl shadow-primary-500/20 mb-10">
-                    <h1 className="text-3xl font-black mb-2 text-white">Bem-vindo, {user?.name || 'Usuário'}.</h1>
-                    <p className="opacity-90 font-medium">Uma plataforma de gestão de molduraria à sua  disposição!</p>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+                        <div>
+                            <h1 className="text-3xl font-black mb-2 text-white">Bem-vindo, {user?.name || 'Usuário'}.</h1>
+                            <p className="opacity-90 font-medium">Uma plataforma de gestão de molduraria à sua disposição!</p>
+                        </div>
+                        {user?.active_store && (
+                            <div className="mt-4 md:mt-0 px-4 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center gap-2">
+                                <span className="text-lg">🏢</span>
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-white/70 block">Unidade Selecionada</span>
+                                    <span className="text-sm font-extrabold text-white">{user.active_store.name}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
