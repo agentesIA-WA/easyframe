@@ -21,7 +21,8 @@ export default function StoreManagementScreen() {
         city: '',
         cep: '',
         phone: '',
-        email: ''
+        email: '',
+        is_wholesale: false
     });
     
     // Gestão de Permissões por Usuário da Loja selecionada
@@ -59,7 +60,8 @@ export default function StoreManagementScreen() {
             city: '',
             cep: '',
             phone: '',
-            email: ''
+            email: '',
+            is_wholesale: false
         });
     };
 
@@ -75,7 +77,8 @@ export default function StoreManagementScreen() {
             city: store.city || '',
             cep: store.cep || '',
             phone: store.phone || '',
-            email: store.email || ''
+            email: store.email || '',
+            is_wholesale: !!store.is_wholesale
         });
     };
 
@@ -95,6 +98,7 @@ export default function StoreManagementScreen() {
             }
             setEditingStore(null);
             fetchStores();
+            refreshUser();
             setTimeout(() => setFeedbackMsg(null), 4000);
         } catch (err) {
             console.error('Erro ao salvar loja:', err);
@@ -273,6 +277,21 @@ export default function StoreManagementScreen() {
                                 </div>
                             </div>
 
+                            <div className="pt-2">
+                                <label className="flex items-center gap-2 cursor-pointer p-3 border border-slate-200 rounded-lg bg-slate-50 hover:bg-slate-100 transition">
+                                    <input 
+                                        type="checkbox" 
+                                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                                        checked={formData.is_wholesale}
+                                        onChange={e => setFormData({...formData, is_wholesale: e.target.checked})}
+                                    />
+                                    <div>
+                                        <span className="block text-xs font-black uppercase text-slate-800">Unidade de Atacado</span>
+                                        <span className="block text-[10px] text-slate-500 font-bold">Nesta unidade, dimensões (Altura/Largura) não serão obrigatórias no orçamento.</span>
+                                    </div>
+                                </label>
+                            </div>
+
                             <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
                                 <button
                                     type="button"
@@ -315,6 +334,9 @@ export default function StoreManagementScreen() {
                                                 <h4 className="text-sm font-black text-slate-900 uppercase">{store.name}</h4>
                                                 {store.code && (
                                                     <span className="bg-slate-100 text-slate-600 text-[9px] px-2 py-0.5 rounded font-mono font-bold">{store.code}</span>
+                                                )}
+                                                {store.is_wholesale && (
+                                                    <span className="bg-amber-100 text-amber-700 text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-wider">Atacado</span>
                                                 )}
                                             </div>
                                             <p className="text-xs font-bold text-indigo-800 uppercase mt-0.5">{store.company_name}</p>

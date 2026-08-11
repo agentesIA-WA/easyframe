@@ -77,8 +77,12 @@ const ReportScreen = () => {
             }
 
             const storeIdHeader = activeStore?.id || localStorage.getItem('active_store_id');
+            const token = localStorage.getItem('token');
             const response = await axios.get(endpoint, {
-                headers: storeIdHeader ? { 'X-Store-Id': storeIdHeader } : {}
+                headers: {
+                    ...(storeIdHeader ? { 'X-Store-Id': storeIdHeader } : {}),
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
             });
             const data = response.data;
 
@@ -341,6 +345,40 @@ const ReportScreen = () => {
 
     const displayData = getProcessedReportData();
 
+    // Dynamically calculate totals based on filtered data (KPIs will update when filters are applied)
+    const dynamicDailyTotals = React.useMemo(() => {
+        if (reportType !== 'daily-movement') return totals;
+        let count = displayData.length;
+        let total_sales = 0;
+        let gross_value = 0;
+        let discounts = 0;
+        displayData.forEach(item => {
+            const netValue = parseFloat(item.total_sales || item.total_value || item.value || item.amount || 0);
+            const discountValue = parseFloat(item.total_discount ?? item.discount ?? 0) || (item.items ? item.items.reduce((sum, i) => sum + parseFloat(i.item_discount || 0), 0) : 0);
+            const gross = item.gross_value ? parseFloat(item.gross_value) : (netValue + discountValue);
+            total_sales += netValue;
+            gross_value += gross;
+            discounts += discountValue;
+        });
+        return { count, total_sales, gross_value, discounts };
+    }, [displayData, reportType, totals]);
+
+    const dynamicForecastTotals = React.useMemo(() => {
+        if (reportType !== 'delivery-forecast') return totals;
+        let count = displayData.length;
+        let total_value = 0;
+        let in_production = 0;
+        let ready = 0;
+        let delivered = 0;
+        displayData.forEach(item => {
+            total_value += parseFloat(item.total_value || 0);
+            if (['production', 'confirmed', 'pending'].includes(item.status)) in_production++;
+            if (item.status === 'ready') ready++;
+            if (['delivered', 'finished'].includes(item.status)) delivered++;
+        });
+        return { count, total_value, in_production, ready, delivered };
+    }, [displayData, reportType, totals]);
+
     const getStatusBadge = (item) => {
         if (reportType === 'commissions') {
             return (
@@ -540,7 +578,7 @@ const ReportScreen = () => {
             </div>
 
             {/* Daily Movement KPI Cards & Payment Breakdown */}
-            {totals && reportType === 'daily-movement' && (
+            {dynamicDailyTotals && reportType === 'daily-movement' && (
                 <div className="space-y-6">
                     {/* Top KPI Cards: Total Vendas, Valor Bruto, Descontos, Pedidos */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -549,7 +587,7 @@ const ReportScreen = () => {
                                 <span className="text-[10px] font-black uppercase tracking-widest">Total Vendas (Líquido)</span>
                                 <svg className="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </div>
-                            <p className="text-3xl font-black">R$ {parseFloat(totals.total_sales || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                            <p className="text-3xl font-black">R$ {parseFloat(dynamicDailyTotals.total_sales || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                             <p className="text-[11px] opacity-75 font-medium mt-1">
                                 Período: {isAllDates ? 'Todas as Datas' : `${startDate ? startDate.split('-').reverse().join('/') : ''} até ${endDate ? endDate.split('-').reverse().join('/') : ''}`}
                             </p>
@@ -560,7 +598,7 @@ const ReportScreen = () => {
                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Valor Bruto</span>
                                 <svg className="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                             </div>
-                            <p className="text-3xl font-black text-emerald-400">R$ {parseFloat(totals.gross_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                            <p className="text-3xl font-black text-emerald-400">R$ {parseFloat(dynamicDailyTotals.gross_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                             <p className="text-[11px] text-slate-400 font-medium mt-1">Antes de aplicar descontos</p>
                         </div>
 
@@ -569,7 +607,7 @@ const ReportScreen = () => {
                                 <span className="text-[10px] font-black uppercase tracking-widest">Descontos Concedidos</span>
                                 <svg className="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </div>
-                            <p className="text-3xl font-black text-rose-500">R$ {parseFloat(totals.discounts || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                            <p className="text-3xl font-black text-rose-500">R$ {parseFloat(dynamicDailyTotals.discounts || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                             <p className="text-[11px] text-slate-500 font-medium mt-1">Total abatido no dia</p>
                         </div>
 
@@ -578,7 +616,7 @@ const ReportScreen = () => {
                                 <span className="text-[10px] font-black uppercase tracking-widest">Qtd. de Pedidos</span>
                                 <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 11h14l1 12H4L5 11z" /></svg>
                             </div>
-                            <p className="text-3xl font-black text-slate-800">{totals.count}</p>
+                            <p className="text-3xl font-black text-slate-800">{dynamicDailyTotals.count}</p>
                             <p className="text-[11px] text-slate-500 font-medium mt-1">Pedidos gerados no dia</p>
                         </div>
                     </div>
@@ -653,7 +691,7 @@ const ReportScreen = () => {
             )}
 
             {/* Delivery Forecast KPI Cards & Status Breakdown */}
-            {totals && reportType === 'delivery-forecast' && (
+            {dynamicForecastTotals && reportType === 'delivery-forecast' && (
                 <div className="space-y-6">
                     {/* Top KPI Cards: Total, Em Produção, Prontos, Entregues */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -662,8 +700,8 @@ const ReportScreen = () => {
                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Total de Pedidos</span>
                                 <svg className="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                             </div>
-                            <p className="text-3xl font-black">{totals.count}</p>
-                            <p className="text-[11px] text-slate-400 font-medium mt-1">Valor: R$ {parseFloat(totals.total_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                            <p className="text-3xl font-black">{dynamicForecastTotals.count}</p>
+                            <p className="text-[11px] text-slate-400 font-medium mt-1">Valor: R$ {parseFloat(dynamicForecastTotals.total_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                         </div>
 
                         <div className="bg-amber-600 p-6 rounded-2xl shadow-lg text-white">
@@ -671,7 +709,7 @@ const ReportScreen = () => {
                                 <span className="text-[10px] font-black uppercase tracking-widest">Em Produção</span>
                                 <svg className="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </div>
-                            <p className="text-3xl font-black">{totals.in_production}</p>
+                            <p className="text-3xl font-black">{dynamicForecastTotals.in_production}</p>
                             <p className="text-[11px] opacity-80 font-medium mt-1">Aguardando/Em confecção</p>
                         </div>
 
@@ -680,7 +718,7 @@ const ReportScreen = () => {
                                 <span className="text-[10px] font-black uppercase tracking-widest">Prontos p/ Entrega</span>
                                 <svg className="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
                             </div>
-                            <p className="text-3xl font-black">{totals.ready}</p>
+                            <p className="text-3xl font-black">{dynamicForecastTotals.ready}</p>
                             <p className="text-[11px] opacity-80 font-medium mt-1">Aguardando retirada/envio</p>
                         </div>
 
@@ -689,7 +727,7 @@ const ReportScreen = () => {
                                 <span className="text-[10px] font-black uppercase tracking-widest">Entregues / Concluídos</span>
                                 <svg className="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </div>
-                            <p className="text-3xl font-black">{totals.delivered}</p>
+                            <p className="text-3xl font-black">{dynamicForecastTotals.delivered}</p>
                             <p className="text-[11px] opacity-80 font-medium mt-1">Pedidos entregues</p>
                         </div>
                     </div>
@@ -921,6 +959,15 @@ const ReportScreen = () => {
                                             {renderSortableHeader('Status', 'status')}
                                             {renderSortableHeader('Valor', 'amount')}
                                         </>
+                                    ) : reportType === 'receivables' ? (
+                                        <>
+                                            {renderSortableHeader('Cód / ID', 'id')}
+                                            {renderSortableHeader('Nº Pedido', 'order_id')}
+                                            {renderSortableHeader('Cliente', 'customer')}
+                                            {renderSortableHeader('Vencimento', 'due_date')}
+                                            {renderSortableHeader('Status', 'status')}
+                                            {renderSortableHeader('Valor', 'value')}
+                                        </>
                                     ) : (
                                         <>
                                             {renderSortableHeader('Nº Pedido', 'id')}
@@ -1002,6 +1049,45 @@ const ReportScreen = () => {
                                                 </td>
                                                 <td className="px-5 py-4 text-sm font-black text-slate-900 whitespace-nowrap">
                                                     R$ {parseFloat(item.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+
+                                    if (reportType === 'receivables') {
+                                        return (
+                                            <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                                                <td className="px-5 py-4 text-xs font-black text-slate-500 whitespace-nowrap">#{item.id}</td>
+                                                <td className="px-5 py-4 text-sm font-black whitespace-nowrap">
+                                                    {item.order_id ? (
+                                                        <a 
+                                                            href={`/orders/${item.order_id}/print`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1.5 text-primary-600 hover:text-primary-800 hover:underline font-black group"
+                                                            title="Clique para abrir o pedido para impressão"
+                                                        >
+                                                            <span>#{item.order_id}</span>
+                                                        </a>
+                                                    ) : (
+                                                        '—'
+                                                    )}
+                                                </td>
+                                                <td className="px-5 py-4 text-xs font-black text-slate-800 uppercase whitespace-nowrap">
+                                                    {item.order?.customer?.name || 'CLIENTE DIVERSOS'}
+                                                </td>
+                                                <td className="px-5 py-4 text-xs font-bold text-slate-600 whitespace-nowrap">
+                                                    {formatDate(item.due_date)}
+                                                </td>
+                                                <td className="px-5 py-4 text-xs font-bold whitespace-nowrap">
+                                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                                        item.status === 'A' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                                                    }`}>
+                                                        {item.status === 'A' ? 'A RECEBER' : 'PAGO'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4 text-sm font-black text-rose-600 whitespace-nowrap">
+                                                    R$ {parseFloat(item.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </td>
                                             </tr>
                                         );

@@ -92,6 +92,7 @@ class StoreController extends Controller
             'website' => 'nullable|string|max:255',
             'business_hours' => 'nullable|string|max:255',
             'is_active' => 'boolean',
+            'is_wholesale' => 'boolean',
         ]);
 
         $newStore = Store::create($validated);
@@ -132,6 +133,7 @@ class StoreController extends Controller
             'website' => 'nullable|string|max:255',
             'business_hours' => 'nullable|string|max:255',
             'is_active' => 'boolean',
+            'is_wholesale' => 'boolean',
         ]);
 
         $store->update($validated);

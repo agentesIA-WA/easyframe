@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNotification } from '../../Contexts/NotificationContext';
+import { useAuth } from '../../Contexts/AuthContext';
 import { formatDate } from '../../utils/formatters';
 import ConfirmModal from '../../Components/Modals/ConfirmModal';
 import Pagination from '../../Components/Pagination';
@@ -9,6 +10,7 @@ import { sendWhatsApp } from '../../utils/whatsapp';
 
 export default function BudgetList() {
     const { notify } = useNotification();
+    const { activeStore } = useAuth();
     const [budgets, setBudgets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedBudget, setSelectedBudget] = useState(null);
@@ -43,7 +45,7 @@ export default function BudgetList() {
         }, 500);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [search, sortBy, sortDir]);
+    }, [search, sortBy, sortDir, activeStore?.id]);
 
     const handleSort = (field) => {
         const newDir = sortBy === field && sortDir === 'asc' ? 'desc' : 'asc';
@@ -152,7 +154,14 @@ export default function BudgetList() {
 
             <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
                 <div className="bg-slate-800 text-white px-4 py-2 flex flex-col md:flex-row justify-between items-center gap-2">
-                    <h1 className="text-xs font-black uppercase tracking-widest">SCR-005: Lista de Orçamentos e Pedidos</h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-xs font-black uppercase tracking-widest">SCR-005: Lista de Orçamentos e Pedidos</h1>
+                        {activeStore && (
+                            <span className="bg-primary-500/20 text-primary-300 border border-primary-500/30 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider">
+                                🏢 {activeStore.name}
+                            </span>
+                        )}
+                    </div>
                     <div className="flex flex-col md:flex-row items-center gap-2 w-full md:w-auto">
                         <div className="relative w-full md:w-64">
                             <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">

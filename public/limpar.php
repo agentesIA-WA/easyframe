@@ -113,11 +113,11 @@ $logFile = $baseDir . '/storage/logs/laravel.log';
 if (file_exists($logFile) && filesize($logFile) > 0) {
     $handle = @fopen($logFile, 'r');
     if ($handle) {
-        fseek($handle, -min(filesize($logFile), 4096), SEEK_END);
-        $logContent = fread($handle, 4096);
+        fseek($handle, -min(filesize($logFile), 32768), SEEK_END);
+        $logContent = fread($handle, 32768);
         fclose($handle);
         $lines = explode("\n", trim($logContent));
-        $latestLog = implode("\n", array_slice($lines, -12));
+        $latestLog = implode("\n", array_slice($lines, -150));
     }
 }
 

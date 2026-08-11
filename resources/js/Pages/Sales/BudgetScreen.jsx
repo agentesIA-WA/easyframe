@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNotification } from '../../Contexts/NotificationContext';
+import { useAuth } from '../../Contexts/AuthContext';
 import { formatCurrency } from '../../utils/formatters';
 import { sendWhatsApp } from '../../utils/whatsapp';
 import CustomerQuickModal from '../../Components/Modals/CustomerQuickModal';
@@ -8,6 +9,8 @@ import ProductQuickModal from '../../Components/Modals/ProductQuickModal';
 
 const BudgetScreen = () => {
     const { notify } = useNotification();
+    const { activeStore } = useAuth();
+    const isWholesale = activeStore?.is_wholesale || false;
     const [customers, setCustomers] = useState([]);
     const [sellers, setSellers] = useState([]);
     const [products, setProducts] = useState([]);
@@ -251,8 +254,8 @@ const BudgetScreen = () => {
     const totalValue = calculateGrandTotal();
 
     const handleAddPeça = () => {
-        if (!newPeça.description || !newPeça.height || !newPeça.width) {
-            notify('warning', 'Preencha a descrição e as medidas da peça.');
+        if (!newPeça.description || (!isWholesale && (!newPeça.height || !newPeça.width))) {
+            notify('warning', isWholesale ? 'Preencha a descrição da peça.' : 'Preencha a descrição e as medidas da peça.');
             return;
         }
 
@@ -437,8 +440,8 @@ const BudgetScreen = () => {
                 items: peças.map(p => ({
                     description: p.description,
                     observation: p.observation,
-                    height: p.height,
-                    width: p.width,
+                    height: p.height || 0,
+                    width: p.width || 0,
                     quantity: p.quantity,
                     increase_percent: parseFloat(p.increase_percent || 0),
                     discount_percent: parseFloat(p.discount_percent || 0),
@@ -504,8 +507,8 @@ const BudgetScreen = () => {
                     items: peças.map(p => ({
                         description: p.description,
                         observation: p.observation,
-                        height: p.height,
-                        width: p.width,
+                        height: p.height || 0,
+                        width: p.width || 0,
                         quantity: p.quantity,
                         increase_percent: parseFloat(p.increase_percent || 0),
                         discount_percent: parseFloat(p.discount_percent || 0),
@@ -587,7 +590,7 @@ const BudgetScreen = () => {
                             />
                         </div>
                         <div className="md:col-span-1">
-                            <label className="block text-[10px] font-black text-slate-500 uppercase mb-1">Altura(cm)</label>
+                            <label className="block text-[10px] font-black text-slate-500 uppercase mb-1">Altura(cm) {isWholesale ? '' : '*'}</label>
                             <input
                                 type="number"
                                 className="w-full border-slate-200 rounded text-sm font-bold h-9 text-center"
@@ -596,7 +599,7 @@ const BudgetScreen = () => {
                             />
                         </div>
                         <div className="md:col-span-1">
-                            <label className="block text-[10px] font-black text-slate-500 uppercase mb-1">Largura(cm)</label>
+                            <label className="block text-[10px] font-black text-slate-500 uppercase mb-1">Largura(cm) {isWholesale ? '' : '*'}</label>
                             <input
                                 type="number"
                                 className="w-full border-slate-200 rounded text-sm font-bold h-9 text-center"
@@ -738,7 +741,9 @@ const BudgetScreen = () => {
                                         <button onClick={() => handleRemovePeça(peça.id)} className="text-rose-400 hover:text-rose-600 transition text-xs">✕ EXCLUIR</button>
                                     </div>
                                     <h3 className="font-black text-slate-700 uppercase text-sm">{peça.description}</h3>
-                                    <p className="text-xs font-bold text-primary-600 mt-1">{peça.height} x {peça.width} cm</p>
+                                    {(peça.height || peça.width) ? (
+                                        <p className="text-xs font-bold text-primary-600 mt-1">{peça.height || 0} x {peça.width || 0} cm</p>
+                                    ) : null}
                                     <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Quantidade: {peça.quantity}</p>
                                     {peça.observation && (
                                         <p className="text-[10px] text-slate-500 font-medium italic mt-2 bg-white/50 p-1.5 rounded border border-slate-200">

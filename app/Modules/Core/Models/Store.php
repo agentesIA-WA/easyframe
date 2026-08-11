@@ -22,10 +22,12 @@ class Store extends BaseModel
         'website',
         'business_hours',
         'is_active',
+        'is_wholesale',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_wholesale' => 'boolean',
     ];
 
     public function users()

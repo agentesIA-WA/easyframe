@@ -127,7 +127,28 @@ class ReportController extends Controller
             $query->whereBetween('created_at', [$start, $end]);
         }
 
-        $orders = $query->orderBy('created_at', 'desc')->get();
+        // Limita a 1000 registros para evitar memory exhaustion se buscar TODAS as datas
+        $orders = $query->orderBy('created_at', 'desc')->take(1000)->get();
+
+        if ($orders->isEmpty()) {
+            $debugOrder = new Order();
+            $debugOrder->id = 999999;
+            $debugOrder->status = 'ready';
+            $debugOrder->total_value = 0;
+            $debugOrder->created_at = now();
+            
+            $debugCustomer = new \App\Modules\Customers\Models\Customer();
+            $debugCustomer->name = "DEBUG INFO -> UserID: " . ($user ? $user->id : 'null') . 
+                                   " | IsAdmin: " . ($isAdmin ? 'yes' : 'no') . 
+                                   " | StoreID: " . ($storeId ?? 'null') . 
+                                   " | SQL: " . $query->toSql() . 
+                                   " | Binds: " . implode(',', $query->getBindings());
+            $debugOrder->setRelation('customer', $debugCustomer);
+            $debugOrder->setRelation('items', collect([]));
+            $debugOrder->setRelation('payments', collect([]));
+            
+            $orders->push($debugOrder);
+        }
 
         $discounts = (float) $orders->sum(function ($order) {
             $headerDisc = (float) ($order->discount ?? 0);

@@ -25,17 +25,17 @@ export const formatDate = (date) => {
 };
 
 /**
- * Formata uma data e hora para o padrão brasileiro (DD/MM/AAAA HH:mm) no fuso de Brasília.
+ * Formata uma data e hora para o padrão brasileiro (DD/MM/AAAA HH:mm).
  */
 export const formatDateTime = (date) => {
     if (!date) return '';
-    return new Date(date).toLocaleString('pt-BR', {
+    const localStr = typeof date === 'string' ? date.replace('Z', '') : date;
+    return new Date(localStr).toLocaleString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'America/Sao_Paulo'
+        minute: '2-digit'
     });
 };
 
@@ -65,22 +65,21 @@ export const formatLongDate = (date) => {
 };
 
 /**
- * Formata uma data e hora para o padrão longo com horário no fuso de Brasília.
+ * Formata uma data e hora para o padrão longo com horário.
  */
 export const formatLongDateTime = (date) => {
     if (!date) return '';
-    const d = new Date(date);
+    const localStr = typeof date === 'string' ? date.replace('Z', '') : date;
+    const d = new Date(localStr);
     const datePart = d.toLocaleDateString('pt-BR', { 
         weekday: 'long', 
         day: '2-digit', 
         month: 'long', 
-        year: 'numeric',
-        timeZone: 'America/Sao_Paulo'
+        year: 'numeric'
     });
     const timePart = d.toLocaleTimeString('pt-BR', { 
         hour: '2-digit', 
-        minute: '2-digit',
-        timeZone: 'America/Sao_Paulo'
+        minute: '2-digit'
     });
     return `${datePart} às ${timePart}`;
 };

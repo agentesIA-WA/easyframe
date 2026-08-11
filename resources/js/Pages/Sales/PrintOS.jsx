@@ -141,7 +141,6 @@ export default function PrintOS() {
                                         <th className="pb-0.5">Material / Insumo</th>
                                         <th className="pb-0.5 text-center">Cálculo</th>
                                         <th className="pb-0.5 text-center">Qtd</th>
-                                        <th className="pb-0.5 text-right">Valor</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -156,16 +155,13 @@ export default function PrintOS() {
                                                 {sub.calculation_type == 2 ? 'Linear' : sub.calculation_type == 3 ? 'M²' : 'Absoluto'}
                                             </td>
                                             <td className="py-0.5 text-center font-black">{sub.quantity}</td>
-                                            <td className="py-0.5 text-right font-black">
-                                                R$ {parseFloat(sub.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
                                 <tfoot>
                                     {(parseFloat(item.item_discount || 0) > 0 || parseFloat(item.discount_percent || 0) > 0) && (
                                         <tr className="border-t border-slate-200 bg-rose-50/60 print:bg-rose-50">
-                                            <td colSpan="3" className="py-0.5 px-1.5 text-[9px] font-black text-rose-700 uppercase text-right">
+                                            <td colSpan="2" className="py-0.5 px-1.5 text-[9px] font-black text-rose-700 uppercase text-right">
                                                 Desconto Aplicado {parseFloat(item.discount_percent || 0) > 0 ? `(${parseFloat(item.discount_percent)}%)` : ''}:
                                             </td>
                                             <td className="py-0.5 text-right font-black text-rose-700 text-[10px]">
@@ -174,7 +170,7 @@ export default function PrintOS() {
                                         </tr>
                                     )}
                                     <tr className="border-t border-slate-200">
-                                        <td colSpan="3" className="pt-1 text-[9px] font-black text-slate-400 uppercase text-right">Total da Peça:</td>
+                                        <td colSpan="2" className="pt-1 text-[9px] font-black text-slate-400 uppercase text-right">Total da Peça:</td>
                                         <td className="pt-1 text-right font-black text-slate-900 text-[11px]">
                                             R$ {parseFloat(item.item_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                         </td>

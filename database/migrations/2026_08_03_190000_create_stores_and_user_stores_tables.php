@@ -9,32 +9,36 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('stores', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('code')->nullable();
-            $table->string('company_name')->default('EASY FRAME');
-            $table->string('corporate_name')->nullable();
-            $table->string('cnpj')->nullable();
-            $table->string('cpf')->nullable();
-            $table->string('address')->nullable();
-            $table->string('city')->nullable();
-            $table->string('cep')->nullable();
-            $table->string('phone')->nullable();
-            $table->string('email')->nullable();
-            $table->string('website')->nullable();
-            $table->string('business_hours')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('stores')) {
+            Schema::create('stores', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->string('code')->nullable();
+                $table->string('company_name')->default('EASY FRAME');
+                $table->string('corporate_name')->nullable();
+                $table->string('cnpj')->nullable();
+                $table->string('cpf')->nullable();
+                $table->string('address')->nullable();
+                $table->string('city')->nullable();
+                $table->string('cep')->nullable();
+                $table->string('phone')->nullable();
+                $table->string('email')->nullable();
+                $table->string('website')->nullable();
+                $table->string('business_hours')->nullable();
+                $table->boolean('is_active')->default(true);
+                $table->timestamps();
+            });
+        }
 
-        Schema::create('user_stores', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('store_id')->constrained('stores')->onDelete('cascade');
-            $table->boolean('is_default')->default(false);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('user_stores')) {
+            Schema::create('user_stores', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+                $table->foreignId('store_id')->constrained('stores')->onDelete('cascade');
+                $table->boolean('is_default')->default(false);
+                $table->timestamps();
+            });
+        }
 
         // Copia as configurações existentes de settings para a Loja #1 (Matriz)
         $existingSetting = DB::table('settings')->first();

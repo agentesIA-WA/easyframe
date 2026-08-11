@@ -10,6 +10,10 @@
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # Handle X-Store-Id Header (Previne perda de cabeçalho no Apache/FastCGI da Locaweb)
+    RewriteCond %{HTTP:X-Store-Id} .
+    RewriteRule .* - [E=HTTP_X_STORE_ID:%{HTTP:X-Store-Id}]
+
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
