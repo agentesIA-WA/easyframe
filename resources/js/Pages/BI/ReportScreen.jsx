@@ -497,13 +497,13 @@ const ReportScreen = () => {
     return (
         <div className="space-y-6 max-w-6xl mx-auto pb-10">
             {/* Header & Report Selection */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
                 <div>
                     <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">Centro de Inteligência & Relatórios</h1>
                     <p className="text-xs text-slate-500 font-bold mt-0.5">Selecione o tipo de relatório e analise os dados de vendas</p>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full lg:w-auto lg:justify-end">
                     <div className="flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl p-1.5 shadow-xs">
                         <button 
                             onClick={() => shiftPeriod(-1)}
@@ -599,7 +599,7 @@ const ReportScreen = () => {
 
                     {availableSellers && availableSellers.length > 0 && reportType !== 'expenses' && reportType !== 'cash-flow' && (
                         <select 
-                            className="border-slate-300 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 py-2.5 px-4 bg-slate-50/50 cursor-pointer"
+                            className="border-slate-300 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 py-2.5 px-4 bg-slate-50/50 cursor-pointer max-w-[280px] truncate"
                             value={selectedSellerFilter}
                             onChange={(e) => {
                                 setSelectedSellerFilter(e.target.value);
