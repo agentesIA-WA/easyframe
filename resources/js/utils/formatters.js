@@ -29,13 +29,13 @@ export const formatDate = (date) => {
  */
 export const formatDateTime = (date) => {
     if (!date) return '';
-    const localStr = typeof date === 'string' ? date.replace('Z', '') : date;
-    return new Date(localStr).toLocaleString('pt-BR', {
+    return new Date(date).toLocaleString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: 'America/Sao_Paulo'
     });
 };
 
@@ -69,17 +69,18 @@ export const formatLongDate = (date) => {
  */
 export const formatLongDateTime = (date) => {
     if (!date) return '';
-    const localStr = typeof date === 'string' ? date.replace('Z', '') : date;
-    const d = new Date(localStr);
+    const d = new Date(date);
     const datePart = d.toLocaleDateString('pt-BR', { 
         weekday: 'long', 
         day: '2-digit', 
         month: 'long', 
-        year: 'numeric'
+        year: 'numeric',
+        timeZone: 'America/Sao_Paulo'
     });
     const timePart = d.toLocaleTimeString('pt-BR', { 
         hour: '2-digit', 
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: 'America/Sao_Paulo'
     });
     return `${datePart} às ${timePart}`;
 };

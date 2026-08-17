@@ -17,8 +17,8 @@ class Order extends BaseModel
     protected $fillable = ['store_id', 'customer_id', 'seller_id', 'framer_id', 'status', 'total_value', 'discount', 'production_date', 'delivery_date', 'delivered_at', 'delivery_observation', 'legacy_id'];
 
     protected $casts = [
-        'delivery_date' => 'datetime',
-        'delivered_at' => 'datetime',
+        'delivery_date' => 'datetime:Y-m-d\TH:i:s',
+        'delivered_at' => 'datetime:Y-m-d\TH:i:s',
     ];
 
     protected static function boot()
