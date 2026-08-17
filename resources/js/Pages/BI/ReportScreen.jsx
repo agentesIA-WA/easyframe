@@ -42,6 +42,7 @@ const ReportScreen = () => {
     const [isAllDates, setIsAllDates] = useState(false);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
     const [selectedStatusFilter, setSelectedStatusFilter] = useState(null);
+    const [selectedSellerFilter, setSelectedSellerFilter] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [sortColumn, setSortColumn] = useState(null);
     const [sortDirection, setSortDirection] = useState('asc');
@@ -57,6 +58,7 @@ const ReportScreen = () => {
         setReportType(newType);
         setSelectedPaymentMethod(null);
         setSelectedStatusFilter(null);
+        setSelectedSellerFilter('');
         setSearchTerm('');
         setSortColumn(null);
         const url = new URL(window.location);
@@ -127,6 +129,7 @@ const ReportScreen = () => {
     useEffect(() => {
         setSelectedPaymentMethod(null);
         setSelectedStatusFilter(null);
+        setSelectedSellerFilter('');
         setSearchTerm('');
         setSortColumn(null);
         fetchReport();
@@ -228,8 +231,10 @@ const ReportScreen = () => {
     };
 
     const getFilteredReportData = () => {
+        let data = reportData;
+
         if (reportType === 'daily-movement' && selectedPaymentMethod) {
-            return reportData.filter((item) => {
+            data = data.filter((item) => {
                 if (selectedPaymentMethod === 'A RECEBER / NÃO DEFINIDO') {
                     return !item.payments || item.payments.length === 0;
                 }
@@ -242,7 +247,7 @@ const ReportScreen = () => {
         }
 
         if (reportType === 'delivery-forecast' && selectedStatusFilter) {
-            return reportData.filter((item) => {
+            data = data.filter((item) => {
                 if (selectedStatusFilter === 'EM PRODUÇÃO') {
                     return ['production', 'confirmed', 'pending'].includes(item.status);
                 }
@@ -262,8 +267,25 @@ const ReportScreen = () => {
             });
         }
 
-        return reportData;
+        if (selectedSellerFilter) {
+            data = data.filter(item => {
+                const name = item.seller?.name || item.seller_name;
+                return name === selectedSellerFilter;
+            });
+        }
+
+        return data;
     };
+
+    const uniqueSellers = React.useMemo(() => {
+        if (!reportData || reportData.length === 0) return [];
+        const sellers = new Set();
+        reportData.forEach(item => {
+            const name = item.seller?.name || item.seller_name;
+            if (name) sellers.add(name);
+        });
+        return Array.from(sellers).sort();
+    }, [reportData]);
 
     const getColumnValue = (item, colKey) => {
         const netValue = parseFloat(item.total_sales || item.total_value || item.value || item.amount || 0);
@@ -574,6 +596,22 @@ const ReportScreen = () => {
                         <option value="expenses">Relatório de Despesas</option>
                         <option value="cash-flow">Fluxo de Caixa</option>
                     </select>
+
+                    {uniqueSellers.length > 0 && reportType !== 'expenses' && reportType !== 'cash-flow' && (
+                        <select 
+                            className="border-slate-300 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 py-2.5 px-4 bg-slate-50/50 cursor-pointer"
+                            value={selectedSellerFilter}
+                            onChange={(e) => {
+                                setSelectedSellerFilter(e.target.value);
+                                setSearchTerm('');
+                            }}
+                        >
+                            <option value="">Todos os Vendedores</option>
+                            {uniqueSellers.map(seller => (
+                                <option key={seller} value={seller}>{seller}</option>
+                            ))}
+                        </select>
+                    )}
                 </div>
             </div>
 
@@ -911,11 +949,12 @@ const ReportScreen = () => {
                             )}
                         </div>
 
-                        {(selectedPaymentMethod || selectedStatusFilter || searchTerm || sortColumn) && (
+                        {(selectedPaymentMethod || selectedStatusFilter || selectedSellerFilter || searchTerm || sortColumn) && (
                             <button 
                                 onClick={() => {
                                     setSelectedPaymentMethod(null);
                                     setSelectedStatusFilter(null);
+                                    setSelectedSellerFilter('');
                                     setSearchTerm('');
                                     setSortColumn(null);
                                 }}
@@ -935,7 +974,7 @@ const ReportScreen = () => {
                         </div>
                     ) : displayData.length === 0 ? (
                         <div className="p-16 text-center text-slate-400 font-bold uppercase tracking-wider text-xs">
-                            Nenhum registro encontrado para {(selectedPaymentMethod || selectedStatusFilter || searchTerm) ? `a busca/seleção atual` : 'a seleção atual'}.
+                            Nenhum registro encontrado para {(selectedPaymentMethod || selectedStatusFilter || selectedSellerFilter || searchTerm) ? `a busca/seleção atual` : 'a seleção atual'}.
                         </div>
                     ) : (
                         <table className="w-full text-left min-w-max">

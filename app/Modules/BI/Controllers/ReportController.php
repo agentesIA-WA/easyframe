@@ -110,11 +110,7 @@ class ReportController extends Controller
             });
         }
 
-        if (!$isAdmin) {
-            $employee = $this->getEmployeeForUser($user);
-            $employeeId = $employee ? $employee->id : 0;
-            $query->where('seller_id', $employeeId);
-        }
+
 
         if ($request->filled('date') && $request->date !== 'all') {
             $selectedDate = \Carbon\Carbon::parse($request->date);
@@ -264,14 +260,7 @@ class ReportController extends Controller
             });
         }
 
-        if (!$isAdmin) {
-            $employee = $this->getEmployeeForUser($user);
-            if ($employee) {
-                $vendedoresQuery->where('id', $employee->id);
-            } else {
-                $vendedoresQuery->whereRaw('1 = 0');
-            }
-        }
+
 
         $vendedores = $vendedoresQuery->get();
         $paymentMethods = \App\Modules\Core\Models\PaymentMethod::all();
@@ -408,13 +397,7 @@ class ReportController extends Controller
             });
         }
 
-        if (!$isAdmin) {
-            $employee = $this->getEmployeeForUser($user);
-            $employeeId = $employee ? $employee->id : 0;
-            $query->whereHas('order', function ($q) use ($employeeId) {
-                $q->where('seller_id', $employeeId);
-            });
-        }
+
 
         if ($request->filled('customer_name')) {
             $query->whereHas('order.customer', function ($q) use ($request) {
@@ -450,15 +433,7 @@ class ReportController extends Controller
         $user = $this->resolveUser($request);
         $isAdmin = $user ? (bool) ($user->is_admin || $user->id === 1) : false;
 
-        if (!$isAdmin) {
-            return response()->json([
-                'count' => 0,
-                'total_value' => 0.0,
-                'paid_value' => 0.0,
-                'pending_value' => 0.0,
-                'data' => []
-            ]);
-        }
+
 
         $query = \App\Modules\Finance\Models\Expense::with('type');
 
@@ -538,14 +513,7 @@ class ReportController extends Controller
         $user = $this->resolveUser($request);
         $isAdmin = $user ? (bool) ($user->is_admin || $user->id === 1) : false;
 
-        if (!$isAdmin) {
-            $employee = $this->getEmployeeForUser($user);
-            $employeeId = $employee ? $employee->id : 0;
-            $inflowQuery->whereHas('order', function ($q) use ($employeeId) {
-                $q->where('seller_id', $employeeId);
-            });
-            $outflowQuery->whereRaw('1 = 0');
-        }
+
 
         if ($start && $end) {
             $inflowQuery->whereBetween('created_at', [$start, $end]);
@@ -584,14 +552,7 @@ class ReportController extends Controller
             });
         }
 
-        if (!$isAdmin) {
-            $employee = $this->getEmployeeForUser($user);
-            $employeeId = $employee ? $employee->id : 0;
-            $query->where(function ($q) use ($employeeId) {
-                $q->where('seller_id', $employeeId)
-                  ->orWhere('framer_id', $employeeId);
-            });
-        }
+
 
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $start = \Carbon\Carbon::parse($request->start_date)->startOfDay();
