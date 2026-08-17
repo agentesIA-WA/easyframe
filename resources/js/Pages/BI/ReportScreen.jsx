@@ -47,6 +47,7 @@ const ReportScreen = () => {
     const [sortColumn, setSortColumn] = useState(null);
     const [sortDirection, setSortDirection] = useState('asc');
     const [reportData, setReportData] = useState([]);
+    const [availableSellers, setAvailableSellers] = useState([]);
     const [paymentBreakdown, setPaymentBreakdown] = useState([]);
     const [statusBreakdown, setStatusBreakdown] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -91,16 +92,25 @@ const ReportScreen = () => {
             if (reportType === 'daily-movement') {
                 setReportData(data.data || []);
                 setTotals(data.totals);
+                setAvailableSellers(data.sellers || []);
                 setPaymentBreakdown(data.payment_breakdown || []);
                 setStatusBreakdown([]);
             } else if (reportType === 'delivery-forecast') {
                 setReportData(data.data || []);
                 setTotals(data.totals);
+                setAvailableSellers(data.sellers || []);
                 setStatusBreakdown(data.status_breakdown || []);
                 setPaymentBreakdown([]);
-            } else if (reportType === 'expenses' || reportType === 'commissions') {
+            } else if (reportType === 'commissions') {
+                setReportData(data.data || []);
+                setTotals(data.totals);
+                setAvailableSellers([]); // For commissions we don't need a global seller filter
+                setPaymentBreakdown([]);
+                setStatusBreakdown([]);
+            } else if (reportType === 'expenses') {
                 setReportData(data.data || []);
                 setTotals(data);
+                setAvailableSellers([]);
                 setPaymentBreakdown([]);
                 setStatusBreakdown([]);
             } else if (reportType === 'receivables') {
@@ -276,16 +286,6 @@ const ReportScreen = () => {
 
         return data;
     };
-
-    const uniqueSellers = React.useMemo(() => {
-        if (!reportData || reportData.length === 0) return [];
-        const sellers = new Set();
-        reportData.forEach(item => {
-            const name = item.seller?.name || item.seller_name;
-            if (name) sellers.add(name);
-        });
-        return Array.from(sellers).sort();
-    }, [reportData]);
 
     const getColumnValue = (item, colKey) => {
         const netValue = parseFloat(item.total_sales || item.total_value || item.value || item.amount || 0);
@@ -597,7 +597,7 @@ const ReportScreen = () => {
                         <option value="cash-flow">Fluxo de Caixa</option>
                     </select>
 
-                    {uniqueSellers.length > 0 && reportType !== 'expenses' && reportType !== 'cash-flow' && (
+                    {availableSellers && availableSellers.length > 0 && reportType !== 'expenses' && reportType !== 'cash-flow' && (
                         <select 
                             className="border-slate-300 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 py-2.5 px-4 bg-slate-50/50 cursor-pointer"
                             value={selectedSellerFilter}
@@ -607,8 +607,8 @@ const ReportScreen = () => {
                             }}
                         >
                             <option value="">Todos os Vendedores</option>
-                            {uniqueSellers.map(seller => (
-                                <option key={seller} value={seller}>{seller}</option>
+                            {availableSellers.map(seller => (
+                                <option key={seller.id} value={seller.name}>{seller.name}</option>
                             ))}
                         </select>
                     )}

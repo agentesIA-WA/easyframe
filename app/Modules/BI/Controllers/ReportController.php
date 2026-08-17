@@ -89,6 +89,21 @@ class ReportController extends Controller
             ->first();
     }
 
+    protected function getActiveSellers(Request $request)
+    {
+        $vendedoresQuery = \App\Modules\HR\Models\Employee::where('status', 'active');
+        $storeId = $request->header('X-Store-Id');
+        if ($storeId) {
+            $vendedoresQuery->where(function($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+                if ((int)$storeId === 1) {
+                    $q->orWhereNull('store_id');
+                }
+            });
+        }
+        return $vendedoresQuery->get(['id', 'name', 'role']);
+    }
+
     public function dailyMovement(Request $request)
     {
         $start = null;
@@ -213,6 +228,7 @@ class ReportController extends Controller
             'period' => ['start' => $start ? $start->toDateTimeString() : null, 'end' => $end ? $end->toDateTimeString() : null],
             'totals' => $totals,
             'payment_breakdown' => $paymentBreakdown,
+            'sellers' => $this->getActiveSellers($request),
             'data' => $orders
         ]);
     }
