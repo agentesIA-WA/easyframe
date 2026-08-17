@@ -84,14 +84,15 @@ class ReportController extends Controller
             return null;
         }
 
-        return \App\Modules\HR\Models\Employee::where('user_id', $user->id)
+        return \App\Modules\HR\Models\Employee::query()
+            ->where('user_id', $user->id)
             ->orWhere('name', 'LIKE', '%' . $user->name . '%')
             ->first();
     }
 
     protected function getActiveSellers(Request $request)
     {
-        $vendedoresQuery = \App\Modules\HR\Models\Employee::where('status', 'active');
+        $vendedoresQuery = \App\Modules\HR\Models\Employee::query();
         $storeId = $request->header('X-Store-Id');
         if ($storeId) {
             $vendedoresQuery->where(function($q) use ($storeId) {
