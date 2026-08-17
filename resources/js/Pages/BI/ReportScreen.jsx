@@ -287,6 +287,25 @@ const ReportScreen = () => {
         return data;
     };
 
+    const combinedSellers = React.useMemo(() => {
+        const sellersMap = new Map();
+
+        if (availableSellers && availableSellers.length > 0) {
+            availableSellers.forEach(s => {
+                if (s.name) sellersMap.set(s.name, s.name);
+            });
+        }
+
+        if (reportData && reportData.length > 0) {
+            reportData.forEach(item => {
+                const name = item.seller?.name || item.seller_name;
+                if (name) sellersMap.set(name, name);
+            });
+        }
+
+        return Array.from(sellersMap.values()).sort();
+    }, [availableSellers, reportData]);
+
     const getColumnValue = (item, colKey) => {
         const netValue = parseFloat(item.total_sales || item.total_value || item.value || item.amount || 0);
         const discountValue = parseFloat(item.total_discount ?? item.discount ?? 0) || (item.items ? item.items.reduce((acc, i) => acc + parseFloat(i.item_discount || 0), 0) : 0);
@@ -597,7 +616,7 @@ const ReportScreen = () => {
                         <option value="cash-flow">Fluxo de Caixa</option>
                     </select>
 
-                    {availableSellers && availableSellers.length > 0 && reportType !== 'expenses' && reportType !== 'cash-flow' && (
+                    {combinedSellers.length > 0 && reportType !== 'expenses' && reportType !== 'cash-flow' && (
                         <select 
                             className="border-slate-300 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 py-2.5 px-4 bg-slate-50/50 cursor-pointer max-w-[280px] truncate"
                             value={selectedSellerFilter}
@@ -607,8 +626,8 @@ const ReportScreen = () => {
                             }}
                         >
                             <option value="">Todos os Vendedores</option>
-                            {availableSellers.map(seller => (
-                                <option key={seller.id} value={seller.name}>{seller.name}</option>
+                            {combinedSellers.map(sellerName => (
+                                <option key={sellerName} value={sellerName}>{sellerName}</option>
                             ))}
                         </select>
                     )}
