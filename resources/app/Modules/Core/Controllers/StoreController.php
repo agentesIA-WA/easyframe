@@ -39,10 +39,10 @@ class StoreController extends Controller
     {
         $user = $this->resolveUser($request);
 
-        if ($user && ($user->is_admin || $user->id === 1)) {
+        if ($user && ($user->is_admin || $user->id === 1 || $user->hasModuleAccess('stores', 'view') || $user->hasModuleAccess('stores', 'update') || $user->hasModuleAccess('stores', 'create'))) {
             $stores = Store::where('is_active', true)->orderBy('id', 'asc')->get();
         } else if ($user) {
-            $stores = $user->stores()->where('is_active', true)->orderBy('id', 'asc')->get();
+            $stores = $user->getAllowedStores();
         } else {
             $stores = Store::where('is_active', true)->orderBy('id', 'asc')->get();
         }
@@ -69,8 +69,8 @@ class StoreController extends Controller
     public function store(Request $request)
     {
         $user = $this->resolveUser($request);
-        if ($user && !$user->is_admin && $user->id !== 1) {
-            return response()->json(['message' => 'Apenas administradores podem cadastrar novas lojas.'], 403);
+        if ($user && !$user->is_admin && $user->id !== 1 && !$user->hasModuleAccess('stores', 'create')) {
+            return response()->json(['message' => 'Apenas administradores ou usuários autorizados podem cadastrar novas lojas.'], 403);
         }
 
         if (!$request->filled('company_name') && $request->filled('name')) {
@@ -92,6 +92,7 @@ class StoreController extends Controller
             'website' => 'nullable|string|max:255',
             'business_hours' => 'nullable|string|max:255',
             'is_active' => 'boolean',
+            'is_wholesale' => 'boolean',
         ]);
 
         $newStore = Store::create($validated);
@@ -113,7 +114,7 @@ class StoreController extends Controller
     public function update(Request $request, Store $store)
     {
         $user = $this->resolveUser($request);
-        if ($user && !$user->is_admin && $user->id !== 1) {
+        if ($user && !$user->is_admin && $user->id !== 1 && !$user->hasModuleAccess('stores', 'update')) {
             return response()->json(['message' => 'Sem permissão para alterar dados da loja.'], 403);
         }
 
@@ -132,6 +133,7 @@ class StoreController extends Controller
             'website' => 'nullable|string|max:255',
             'business_hours' => 'nullable|string|max:255',
             'is_active' => 'boolean',
+            'is_wholesale' => 'boolean',
         ]);
 
         $store->update($validated);
@@ -145,12 +147,12 @@ class StoreController extends Controller
     public function getUsers(Request $request, Store $store)
     {
         $user = $this->resolveUser($request);
-        if ($user && !$user->is_admin && $user->id !== 1) {
+        if ($user && !$user->is_admin && $user->id !== 1 && !$user->hasModuleAccess('stores', 'update') && !$user->hasModuleAccess('stores', 'create')) {
             return response()->json(['message' => 'Acesso negado.'], 403);
         }
 
         $users = User::select('id', 'name', 'email', 'is_admin')->get()->map(function ($u) use ($store) {
-            $hasAccess = $u->is_admin || DB::table('user_stores')->where('user_id', $u->id)->where('store_id', $store->id)->exists();
+            $hasAccess = $u->hasStoreAccess($store->id);
             return [
                 'id' => $u->id,
                 'name' => $u->name,
@@ -169,8 +171,8 @@ class StoreController extends Controller
     public function assignUsers(Request $request, Store $store)
     {
         $user = $this->resolveUser($request);
-        if ($user && !$user->is_admin && $user->id !== 1) {
-            return response()->json(['message' => 'Apenas administradores podem atribuir permissões.'], 403);
+        if ($user && !$user->is_admin && $user->id !== 1 && !$user->hasModuleAccess('stores', 'update') && !$user->hasModuleAccess('stores', 'create')) {
+            return response()->json(['message' => 'Apenas administradores ou usuários autorizados podem atribuir permissões.'], 403);
         }
 
         $request->validate([

@@ -41,7 +41,10 @@ class SystemModuleSeeder extends Seeder
         ];
 
         foreach ($modules as $module) {
-            SystemModule::updateOrCreate(['name' => $module['name']], $module);
+            SystemModule::updateOrCreate(
+                ['name' => $module['name']],
+                array_merge($module, ['is_active' => true])
+            );
         }
     }
 }

@@ -16,7 +16,10 @@ class DailyBalanceController extends Controller
         $storeId = $request->header('X-Store-Id');
         if ($storeId) {
             $query->where(function($q) use ($storeId) {
-                $q->where('store_id', $storeId)->orWhereNull('store_id');
+                $q->where('store_id', $storeId);
+                if ((int)$storeId === 1) {
+                    $q->orWhereNull('store_id');
+                }
             });
         }
         return response()->json($query->orderBy('date', 'desc')->paginate(30));

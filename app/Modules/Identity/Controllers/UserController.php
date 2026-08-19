@@ -19,6 +19,7 @@ class UserController extends Controller
                 'name' => $emp->name,
                 'email' => $emp->user ? $emp->user->email : 'Sem conta de acesso',
                 'role' => $emp->role ?? 'N/A',
+                'is_admin' => (bool) ($emp->user ? $emp->user->is_admin : false),
                 'permissions' => $emp->user ? $emp->user->modulePermissions : []
             ];
         });
@@ -31,6 +32,7 @@ class UserController extends Controller
                 'name' => $user->name . ' (Sistema)',
                 'email' => $user->email,
                 'role' => 'Administrador',
+                'is_admin' => (bool) $user->is_admin,
                 'permissions' => $user->modulePermissions
             ];
         });
@@ -48,7 +50,13 @@ class UserController extends Controller
             'permissions.*.can_create' => 'boolean',
             'permissions.*.can_update' => 'boolean',
             'permissions.*.can_delete' => 'boolean',
+            'is_admin' => 'nullable|boolean',
         ]);
+
+        if ($request->has('is_admin')) {
+            $user->is_admin = $request->is_admin;
+            $user->save();
+        }
 
         // Remove permissões atuais
         $user->modulePermissions()->delete();

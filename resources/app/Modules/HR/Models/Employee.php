@@ -37,14 +37,14 @@ class Employee extends BaseModel
 
     public function stores()
     {
-        return $this->belongsToMany(Store::class, 'employee_stores');
+        return $this->belongsToMany(Store::class, 'employee_stores')->withTimestamps();
     }
 
     public function getStoreIdsAttribute(): array
     {
         if ($this->relationLoaded('stores') && $this->stores->count() > 0) {
-            return $this->stores->pluck('id')->toArray();
+            return $this->stores->pluck('id')->map(fn($id) => (int) $id)->toArray();
         }
-        return $this->store_id ? [$this->store_id] : [];
+        return $this->store_id ? [(int) $this->store_id] : [];
     }
 }

@@ -35,6 +35,7 @@ const BudgetScreen = () => {
     const [isOrder, setIsOrder] = useState(false);
     const [deliveryDate, setDeliveryDate] = useState('');
     const [deliveryTime, setDeliveryTime] = useState('');
+    const [orderStatus, setOrderStatus] = useState('draft');
 
     // DADOS DE PAGAMENTO MÚLTIPLOS
     const [paymentList, setPaymentList] = useState([
@@ -43,6 +44,7 @@ const BudgetScreen = () => {
             payment_method_id: '',
             value: '',
             installments: 1,
+            is_paid: false,
             card_brand: '',
             cheque_type: 'vista',
             cheque_numbers: [],
@@ -99,6 +101,7 @@ const BudgetScreen = () => {
                     if (foundCust) setSelectedCustomerName(foundCust.name);
                     setSellerId(budget.seller_id);
                     setIsOrder(budget.status !== 'draft');
+                    setOrderStatus(budget.status);
 
                     // Carrega formas de pagamento do orçamento/pedido se existirem
                     if (budget.payments && budget.payments.length > 0) {
@@ -137,11 +140,12 @@ const BudgetScreen = () => {
 
                     // Carrega data/hora de entrega se existir
                     if (budget.delivery_date) {
-                        const [datePart, timePart] = budget.delivery_date.split('T');
-                        setDeliveryDate(datePart);
-                        if (timePart) {
-                            setDeliveryTime(timePart.substring(0, 5)); // HH:mm
-                        }
+                        const safeDateStr = typeof budget.delivery_date === 'string' ? budget.delivery_date.replace('Z', '') : budget.delivery_date;
+                        const localDate = new Date(safeDateStr);
+                        const localDateString = localDate.toLocaleDateString('en-CA'); // 'YYYY-MM-DD'
+                        const localTimeString = localDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); // 'HH:mm'
+                        setDeliveryDate(localDateString);
+                        setDeliveryTime(localTimeString);
                     }
 
                     // Mapeia os itens vindos do backend para o formato do estado
@@ -358,7 +362,7 @@ const BudgetScreen = () => {
                 payment_method_id: '',
                 value: rem > 0 ? rem.toFixed(2) : '',
                 installments: 1,
-                is_paid: isOrder,
+                is_paid: false,
                 card_brand: '',
                 cheque_type: 'vista',
                 cheque_numbers: [],
@@ -417,7 +421,7 @@ const BudgetScreen = () => {
             const payload = {
                 customer_id: customerId,
                 seller_id: sellerId,
-                status: isOrder ? 'confirmed' : 'draft',
+                status: isOrder ? (orderStatus === 'draft' ? 'confirmed' : orderStatus) : 'draft',
                 payments: paymentList.map((p) => {
                     const selectedPm = paymentMethods.find(m => m.id == p.payment_method_id);
                     const val = parseFloat(p.value);
@@ -426,7 +430,7 @@ const BudgetScreen = () => {
                         payment_method: selectedPm ? selectedPm.description : null,
                         value: isNaN(val) || val <= 0 ? (paymentList.length === 1 ? grandTotal : 0) : val,
                         installments: parseInt(p.installments || 1),
-                        is_paid: p.is_paid !== undefined ? p.is_paid : isOrder,
+                        is_paid: p.is_paid !== undefined ? p.is_paid : false,
                         card_brand: p.card_brand || null,
                         cheque_type: p.cheque_type,
                         cheque_numbers: p.cheque_numbers,
@@ -461,7 +465,10 @@ const BudgetScreen = () => {
                 window.location.href = isOrder ? '/orders' : '/budgets';
             }, 1500);
         } catch (error) {
-            notify('error', `Erro ao ${isEdit ? 'atualizar' : 'salvar'} registro.`);
+            console.error('Save error details:', error);
+            alert(`Erro real no Javascript/Axios:\nMensagem: ${error.message}\nPilha: ${error.stack}\nResposta: ${JSON.stringify(error.response?.data)}`);
+            const msg = error.response?.data?.message || `Erro ao ${isEdit ? 'atualizar' : 'salvar'} registro.`;
+            notify('error', msg);
         } finally {
             setLoading(false);
         }
@@ -484,7 +491,7 @@ const BudgetScreen = () => {
                 const payload = {
                     customer_id: customerId,
                     seller_id: sellerId,
-                    status: isOrder ? 'confirmed' : 'draft',
+                    status: isOrder ? (orderStatus === 'draft' ? 'confirmed' : orderStatus) : 'draft',
                     payments: paymentList.map((p) => {
                         const selectedPm = paymentMethods.find(m => m.id == p.payment_method_id);
                         const val = parseFloat(p.value);
@@ -493,7 +500,7 @@ const BudgetScreen = () => {
                             payment_method: selectedPm ? selectedPm.description : null,
                             value: isNaN(val) || val <= 0 ? (paymentList.length === 1 ? grandTotal : 0) : val,
                             installments: parseInt(p.installments || 1),
-                            is_paid: p.is_paid !== undefined ? p.is_paid : isOrder,
+                            is_paid: p.is_paid !== undefined ? p.is_paid : false,
                             card_brand: p.card_brand || null,
                             cheque_type: p.cheque_type,
                             cheque_numbers: p.cheque_numbers,
@@ -540,7 +547,7 @@ const BudgetScreen = () => {
             customer: foundCust,
             total_value: totalValue,
             items: peças,
-            status: isOrder ? 'confirmed' : 'draft'
+            status: isOrder ? orderStatus : 'draft'
         });
     };
 

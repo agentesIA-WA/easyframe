@@ -159,7 +159,15 @@ class OrderController extends Controller
                 $installmentValue = $assignedValue / $installments;
                 
                 $isPaidExplicit = !empty($pmData['is_paid']) || ($pmData['status'] ?? '') === 'P';
-                $paymentStatus = $isPaidExplicit ? 'P' : ($order->status === 'draft' ? 'D' : 'A');
+                
+                if ($order->status === 'delivered') {
+                    if ($method && mb_strtoupper(trim($method)) === 'A PAGAR NA ENTREGA') {
+                        abort(422, 'Você não pode usar a forma "A PAGAR NA ENTREGA" em um pedido que já está Entregue.');
+                    }
+                    $paymentStatus = 'P';
+                } else {
+                    $paymentStatus = $isPaidExplicit ? 'P' : ($order->status === 'draft' ? 'D' : 'A');
+                }
 
                 for ($i = 1; $i <= $installments; $i++) {
                     $chequeNum = null;
@@ -232,7 +240,15 @@ class OrderController extends Controller
 
         $installments = $details['installments'] ?? 1;
         $installmentValue = $order->total_value / $installments;
-        $paymentStatus = $order->status === 'draft' ? 'D' : 'A';
+        
+        if ($order->status === 'delivered') {
+            if ($method && mb_strtoupper(trim($method)) === 'A PAGAR NA ENTREGA') {
+                abort(422, 'Você não pode usar a forma "A PAGAR NA ENTREGA" em um pedido que já está Entregue.');
+            }
+            $paymentStatus = 'P';
+        } else {
+            $paymentStatus = $order->status === 'draft' ? 'D' : 'A';
+        }
 
         for ($i = 1; $i <= $installments; $i++) {
             $chequeNum = null;
@@ -541,6 +557,12 @@ class OrderController extends Controller
                         }
                     }
 
+                    if ($methodName && mb_strtoupper($methodName) === 'A PAGAR NA ENTREGA') {
+                        return response()->json([
+                            'message' => 'O sistema não permite concluir a baixa com a forma "A PAGAR NA ENTREGA". Por favor, informe a forma real de pagamento.'
+                        ], 422);
+                    }
+
                     if (!$isCash && $methodName) {
                         $upper = mb_strtoupper($methodName);
                         if (str_contains($upper, 'PIX') || str_contains($upper, 'DINHEIRO') || str_contains($upper, 'DÉBITO') || str_contains($upper, 'DEBITO')) {
@@ -648,32 +670,84 @@ class OrderController extends Controller
         return response()->json($order->load(['customer', 'seller', 'framer', 'items.subItems', 'payments']));
     }
 
-    public function destroy(Order $order)
+    public function destroy(Request $request, Order $order)
     {
-        if ($order->status !== 'draft') {
-            return response()->json(['message' => 'Apenas orçamentos podem ser excluídos.'], 422);
+        $request->validate([
+            'admin_password' => 'required|string',
+        ]);
+
+        // Verificar se a senha pertence a algum administrador ativo
+        $admins = \App\Models\User::where('is_admin', true)->get();
+        $authorizedAdmin = null;
+
+        foreach ($admins as $admin) {
+            if (\Illuminate\Support\Facades\Hash::check($request->admin_password, $admin->password)) {
+                $authorizedAdmin = $admin;
+                break;
+            }
         }
+
+        if (!$authorizedAdmin) {
+            return response()->json(['message' => 'Senha de administrador inválida ou incorreta.'], 403);
+        }
+
+        // Registrar log de auditoria
+        \App\Modules\Core\Models\AuditLog::create([
+            'user_id' => $authorizedAdmin->id,
+            'description' => "Exclusão de Pedido/Orçamento #{$order->id}",
+            'metadata' => [
+                'order_id' => $order->id,
+                'total_value' => $order->total_value,
+                'status_before_delete' => $order->status,
+                'customer_id' => $order->customer_id
+            ]
+        ]);
 
         $order->delete();
 
-        return response()->json(['message' => 'Orçamento excluído com sucesso.']);
+        return response()->json(['message' => 'Registro excluído com sucesso.']);
     }
 
     public function logRescue(Request $request, Order $order)
     {
-        if (in_array($order->status, ['production', 'ready', 'delivered'])) {
-            return response()->json(['message' => 'Pedidos em produção ou posteriores não podem ser resgatados para edição.'], 422);
+        $requiresAdmin = in_array($order->status, ['production', 'ready', 'delivered']);
+
+        $rules = [
+            'reason' => 'required|string|max:1000',
+        ];
+
+        if ($requiresAdmin) {
+            $rules['admin_password'] = 'required|string';
         }
 
-        $request->validate([
-            'reason' => 'required|string|max:1000',
-        ]);
+        $request->validate($rules);
 
         $userName = Auth::user()?->name ?? $request->input('user_name', 'Operador do Sistema');
+        $userId = Auth::id();
+
+        if ($requiresAdmin) {
+            // Verificar se a senha pertence a algum administrador ativo
+            $admins = \App\Models\User::where('is_admin', true)->get();
+            $authorizedAdmin = null;
+
+            foreach ($admins as $admin) {
+                if (\Illuminate\Support\Facades\Hash::check($request->admin_password, $admin->password)) {
+                    $authorizedAdmin = $admin;
+                    break;
+                }
+            }
+
+            if (!$authorizedAdmin) {
+                return response()->json(['message' => 'Senha de administrador inválida ou incorreta.'], 403);
+            }
+            
+            $userName = $authorizedAdmin->name;
+            $userId = $authorizedAdmin->id;
+        }
 
         OrderEditLog::create([
             'order_id' => $order->id,
-            'user_id' => Auth::id(),
+            'user_id' => $userId,
             'user_name' => $userName,
             'reason' => $request->reason,
         ]);

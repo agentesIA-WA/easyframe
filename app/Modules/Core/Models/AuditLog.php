@@ -12,4 +12,11 @@ class AuditLog extends Model
     {
         return $this->belongsTo(\App\Models\User::class);
     }
+
+    protected function casts(): array
+    {
+        return [
+            'metadata' => 'array',
+        ];
+    }
 }

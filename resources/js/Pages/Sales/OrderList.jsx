@@ -4,6 +4,7 @@ import { useNotification } from '../../Contexts/NotificationContext';
 import { useAuth } from '../../Contexts/AuthContext';
 import { formatDate } from '../../utils/formatters';
 import ConfirmModal from '../../Components/Modals/ConfirmModal';
+import AdminPasswordModal from '../../Components/Modals/AdminPasswordModal';
 import Pagination from '../../Components/Pagination';
 import ViewModal from '../../Components/Modals/ViewModal';
 import SettleOrderModal from '../../Components/Modals/SettleOrderModal';
@@ -32,10 +33,13 @@ export default function OrderList() {
     const [deliveryModal, setDeliveryModal] = useState({ isOpen: false, orderId: null, date: new Date().toISOString().split('T')[0], observation: '' });
 
     // Estado para Modal de Resgate de Pedido para Edição
-    const [rescueModal, setRescueModal] = useState({ isOpen: false, orderId: null, reason: '' });
+    const [rescueModal, setRescueModal] = useState({ isOpen: false, orderId: null, reason: '', status: '', admin_password: '' });
 
     // Estado para Modal de Baixa de Pedido
     const [settleModal, setSettleModal] = useState({ isOpen: false, order: null });
+
+    // Estado para Modal de Exclusão com Senha
+    const [passwordModal, setPasswordModal] = useState({ isOpen: false, orderId: null });
 
     const fetchOrders = async (pageNumber = 1, searchTerm = search, sortField = sortBy, direction = sortDir) => {
         setLoading(true);
@@ -176,16 +180,45 @@ export default function OrderList() {
             return;
         }
 
+        const requiresAdmin = ['production', 'ready', 'delivered'].includes(rescueModal.status);
+        if (requiresAdmin && !rescueModal.admin_password) {
+            notify('warning', 'A senha de administrador é obrigatória para editar este pedido.');
+            return;
+        }
+
         try {
-            await axios.post(`/api/v1/sales/orders/${rescueModal.orderId}/rescue`, {
+            const payload = {
                 reason: rescueModal.reason.trim(),
                 user_name: user?.name || 'Usuário do Sistema'
-            });
+            };
+            
+            if (requiresAdmin) {
+                payload.admin_password = rescueModal.admin_password;
+            }
+
+            await axios.post(`/api/v1/sales/orders/${rescueModal.orderId}/rescue`, payload);
             notify('success', 'Motivo registrado com sucesso! Redirecionando...');
-            setRescueModal({ isOpen: false, orderId: null, reason: '' });
+            setRescueModal({ isOpen: false, orderId: null, reason: '', status: '', admin_password: '' });
             window.location.href = `/budgets/${rescueModal.orderId}/edit`;
         } catch (error) {
             notify('error', error.response?.data?.message || 'Erro ao registrar resgate do pedido.');
+        }
+    };
+
+    const handleDelete = (id) => {
+        setPasswordModal({ isOpen: true, orderId: id });
+    };
+
+    const confirmDelete = async (password) => {
+        try {
+            await axios.delete(`/api/v1/sales/orders/${passwordModal.orderId}`, {
+                data: { admin_password: password }
+            });
+            notify('success', 'Pedido excluído com sucesso.');
+            setPasswordModal({ isOpen: false, orderId: null });
+            fetchOrders();
+        } catch (error) {
+            notify('error', error.response?.data?.message || 'Erro ao excluir pedido. Verifique a senha.');
         }
     };
 
@@ -218,6 +251,14 @@ export default function OrderList() {
                 type={confirmModal.type}
                 onConfirm={confirmModal.onConfirm}
                 onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            />
+
+            <AdminPasswordModal 
+                isOpen={passwordModal.isOpen}
+                onClose={() => setPasswordModal({ isOpen: false, orderId: null })}
+                onConfirm={confirmDelete}
+                title="Excluir Pedido"
+                message="Deseja excluir definitivamente este pedido? Esta ação é irreversível e exige a senha de um administrador."
             />
 
             {/* Modal de Início de Produção */}
@@ -322,7 +363,7 @@ export default function OrderList() {
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-[slideUp_0.3s_ease-out]">
                         <div className="bg-amber-500 px-6 py-4 flex justify-between items-center">
                             <h2 className="text-white font-black text-lg uppercase tracking-widest">Resgatar Pedido (Editar)</h2>
-                            <button onClick={() => setRescueModal({ isOpen: false, orderId: null, reason: '' })} className="text-white/70 hover:text-white transition">
+                            <button onClick={() => setRescueModal({ isOpen: false, orderId: null, reason: '', status: '', admin_password: '' })} className="text-white/70 hover:text-white transition">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
@@ -340,10 +381,26 @@ export default function OrderList() {
                                     onChange={e => setRescueModal({ ...rescueModal, reason: e.target.value })}
                                 ></textarea>
                             </div>
+                            
+                            {['production', 'ready', 'delivered'].includes(rescueModal.status) && (
+                                <div className="mt-4 pt-4 border-t border-amber-200">
+                                    <label className="block text-xs font-black uppercase text-amber-700 mb-2 tracking-widest">Senha de Administrador <span className="text-red-500">*</span></label>
+                                    <div className="p-3 bg-white/50 border border-amber-200 text-amber-800 text-xs rounded-xl font-medium mb-3">
+                                        Este pedido está em <strong>{rescueModal.status === 'delivered' ? 'Entregue' : (rescueModal.status === 'ready' ? 'Pronto' : 'Produção')}</strong>. Somente administradores podem forçar a edição.
+                                    </div>
+                                    <input
+                                        type="password"
+                                        className="w-full border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 text-sm bg-white font-medium shadow-inner"
+                                        placeholder="Digite a senha de administrador"
+                                        value={rescueModal.admin_password || ''}
+                                        onChange={e => setRescueModal({ ...rescueModal, admin_password: e.target.value })}
+                                    />
+                                </div>
+                            )}
                         </div>
                         <div className="px-6 py-4 bg-slate-50 flex justify-end space-x-3">
                             <button
-                                onClick={() => setRescueModal({ isOpen: false, orderId: null, reason: '' })}
+                                onClick={() => setRescueModal({ isOpen: false, orderId: null, reason: '', status: '', admin_password: '' })}
                                 className="px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-200 rounded-xl transition"
                             >
                                 Cancelar
@@ -453,17 +510,15 @@ export default function OrderList() {
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                 </svg>
                                             </button>
-                                            {!['production', 'ready', 'delivered'].includes(order.status) && (
-                                                <button 
-                                                    onClick={() => setRescueModal({ isOpen: true, orderId: order.id, reason: '' })}
-                                                    className="p-1.5 bg-amber-50 text-amber-700 border border-amber-200/60 rounded-md hover:bg-amber-100 hover:scale-105 transition-all shadow-2xs"
-                                                    title="Resgatar para Edição"
-                                                >
-                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                </button>
-                                            )}
+                                            <button 
+                                                onClick={() => setRescueModal({ isOpen: true, orderId: order.id, reason: '', status: order.status, admin_password: '' })}
+                                                className="p-1.5 bg-amber-50 text-amber-700 border border-amber-200/60 rounded-md hover:bg-amber-100 hover:scale-105 transition-all shadow-2xs"
+                                                title="Resgatar para Edição"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
                                             <button 
                                                 onClick={() => window.open(`/orders/${order.id}/print`, '_blank')}
                                                 className="p-1.5 bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 hover:scale-105 transition-all shadow-2xs"
@@ -504,6 +559,15 @@ export default function OrderList() {
                                                     </svg>
                                                 </button>
                                             )}
+                                            <button 
+                                                onClick={() => handleDelete(order.id)}
+                                                className="p-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 hover:scale-105 transition-all shadow-2xs"
+                                                title="Excluir Pedido"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>

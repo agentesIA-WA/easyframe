@@ -131,10 +131,7 @@ class AuthController extends Controller
      */
     private function getAllowedStores(User $user)
     {
-        if ($user->is_admin || $user->id === 1) {
-            return Store::where('is_active', true)->orderBy('id', 'asc')->get();
-        }
-        return $user->stores()->where('is_active', true)->orderBy('id', 'asc')->get();
+        return $user->getAllowedStores();
     }
 
     /**
@@ -150,7 +147,7 @@ class AuthController extends Controller
         
         $activeStore = null;
         if ($activeStoreId) {
-            $activeStore = $allowedStores->firstWhere('id', $activeStoreId);
+            $activeStore = $allowedStores->first(fn ($s) => (int) $s->id === (int) $activeStoreId);
         }
         if (!$activeStore && $allowedStores->count() > 0) {
             $activeStore = $allowedStores->first();

@@ -9,6 +9,7 @@ const UserPermissions = () => {
     const [modules, setModules] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
     const [userPermissions, setUserPermissions] = useState({}); // { moduleId: { view: bool, create: bool, update: bool, delete: bool } }
+    const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [creatingAccount, setCreatingAccount] = useState(false);
@@ -79,6 +80,9 @@ const UserPermissions = () => {
                 };
             });
             setUserPermissions(permissionsMap);
+            setIsAdmin(!!selectedUser.is_admin);
+        } else {
+            setIsAdmin(false);
         }
     }, [selectedUser]);
 
@@ -127,13 +131,14 @@ const UserPermissions = () => {
             }));
 
             await axios.post(`/api/v1/identity/users/${selectedUser.id}/permissions`, {
-                permissions: permissionsToSave
+                permissions: permissionsToSave,
+                is_admin: isAdmin
             });
             notify('success', `Permissões de ${selectedUser.name} sincronizadas.`);
             setShowGuidedBanner(false);
             
             // Atualiza a lista local de usuários para refletir as mudanças
-            setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, permissions: permissionsToSave } : u));
+            setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, permissions: permissionsToSave, is_admin: isAdmin } : u));
 
             // Se for o próprio usuário logado, atualiza o contexto de autenticação
             if (currentUser && currentUser.id === selectedUser.id) {
@@ -245,16 +250,30 @@ const UserPermissions = () => {
                                     </div>
                                 )}
                                 {selectedUser.id && (
-                                    <button
-                                        onClick={handleToggleAll}
-                                        className={`px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest border-2 transition transform active:scale-95 ${
-                                            allChecked 
-                                                ? 'bg-amber-50 border-amber-400 text-amber-700 hover:bg-amber-100' 
-                                                : 'bg-emerald-50 border-emerald-400 text-emerald-700 hover:bg-emerald-100'
-                                        }`}
-                                    >
-                                        {allChecked ? '⊘ Desmarcar Todos' : '✓ Marcar Todos na Matriz'}
-                                    </button>
+                                    <>
+                                        <label className="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl hover:bg-slate-100 transition">
+                                            <div className={`relative w-10 h-5 transition-colors duration-200 ease-in-out rounded-full ${isAdmin ? 'bg-primary-600' : 'bg-slate-300'}`}>
+                                                <div className={`absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform duration-200 ease-in-out ${isAdmin ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">Administrador</span>
+                                            <input 
+                                                type="checkbox"
+                                                className="hidden"
+                                                checked={isAdmin}
+                                                onChange={(e) => setIsAdmin(e.target.checked)}
+                                            />
+                                        </label>
+                                        <button
+                                            onClick={handleToggleAll}
+                                            className={`px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest border-2 transition transform active:scale-95 ${
+                                                allChecked 
+                                                    ? 'bg-amber-50 border-amber-400 text-amber-700 hover:bg-amber-100' 
+                                                    : 'bg-emerald-50 border-emerald-400 text-emerald-700 hover:bg-emerald-100'
+                                            }`}
+                                        >
+                                            {allChecked ? '⊘ Desmarcar Todos' : '✓ Marcar Todos na Matriz'}
+                                        </button>
+                                    </>
                                 )}
                                 <button 
                                     onClick={handleSave}

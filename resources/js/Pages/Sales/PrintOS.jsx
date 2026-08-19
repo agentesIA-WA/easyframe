@@ -62,6 +62,10 @@ export default function PrintOS() {
 
     const paymentMethodName = resolvePaymentMethod();
     const paymentCount = order.payments ? order.payments.length : 0;
+    
+    // Verifica se há métodos de pagamento diferentes
+    const uniqueMethods = new Set((order.payments || []).map(p => p.payment_method || 'N/A'));
+    const isMultipleMethods = uniqueMethods.size > 1;
 
     const isCashMethod = (methodName) => {
         if (!methodName) return false;
@@ -126,7 +130,7 @@ export default function PrintOS() {
                 {order.items.map((item, idx) => (
                     <div key={item.id} className="border border-slate-200 rounded overflow-hidden">
                         <div className="bg-slate-900 text-white px-2.5 py-0.5 flex justify-between items-center">
-                            <span className="text-[9px] font-black uppercase">Peça #{idx + 1}: {item.description}</span>
+                            <span className="text-[9px] font-black uppercase">Peça #{idx + 1}: {item.quantity}x {item.description}</span>
                             <span className="text-[10px] font-black">{item.height} x {item.width} cm</span>
                         </div>
                         <div className="p-2">
@@ -154,7 +158,7 @@ export default function PrintOS() {
                                             <td className="py-0.5 text-center text-[8px] uppercase font-black text-slate-400">
                                                 {sub.calculation_type == 2 ? 'Linear' : sub.calculation_type == 3 ? 'M²' : 'Absoluto'}
                                             </td>
-                                            <td className="py-0.5 text-center font-black">{sub.quantity}</td>
+                                            <td className="py-0.5 text-center font-black">{sub.quantity * (item.quantity || 1)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -191,11 +195,15 @@ export default function PrintOS() {
                     <div>
                         <p className="text-[8px] font-black uppercase text-indigo-500 tracking-widest">Condição de Pagamento</p>
                         <p className="text-xs font-black text-indigo-900 uppercase">
-                            {paymentMethodName ? (
-                                <>
-                                    {paymentMethodName}
-                                    {paymentCount > 1 ? ` (${paymentCount}X)` : ' (À VISTA)'}
-                                </>
+                            {order.payments && order.payments.length > 0 ? (
+                                isMultipleMethods ? (
+                                    'MÚLTIPLAS FORMAS DE PAGAMENTO'
+                                ) : (
+                                    <>
+                                        {paymentMethodName}
+                                        {paymentCount > 1 ? ` (${paymentCount}X)` : ' (À VISTA)'}
+                                    </>
+                                )
                             ) : (
                                 <span className="text-slate-400">A DEFINIR</span>
                             )}
@@ -210,6 +218,7 @@ export default function PrintOS() {
                             const rawDueDate = isCash ? (order.created_at || p.due_date) : p.due_date;
                             const dateStr = formatDate(rawDueDate) || 'N/A';
                             const valStr = parseFloat(p.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                            const isPaid = p.status === 'P' || !!p.paid_at;
                             
                             let extraDetails = '';
                             if (p.cheque_number) {
@@ -224,9 +233,16 @@ export default function PrintOS() {
                                 <div key={p.id} className="flex justify-between items-center text-[10px] font-bold text-slate-700 bg-white px-2.5 py-1 rounded border border-indigo-100/40">
                                     <div className="flex items-center gap-1.5">
                                         <span className="bg-indigo-100 text-indigo-800 text-[8px] px-1 py-0.2 rounded font-black font-mono">
-                                            {idx + 1}ª PARC.
+                                            {isMultipleMethods 
+                                                ? `${p.payment_method || 'PARCELA'}`.toUpperCase() + (p.installment_number ? ` (${p.installment_number}ª)` : '')
+                                                : `${idx + 1}ª PARC.`}
                                         </span>
                                         <span>Vencimento: {dateStr} {isCash ? '(No dia / À Vista)' : ''}</span>
+                                        {isPaid && (
+                                            <span className="bg-emerald-100 text-emerald-700 text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider ml-1 border border-emerald-200/50">
+                                                ✓ PAGO
+                                            </span>
+                                        )}
                                         {extraDetails && (
                                             <span className="text-slate-400 font-mono text-[9px] ml-1 border-l border-slate-200 pl-1.5">
                                                 {extraDetails}

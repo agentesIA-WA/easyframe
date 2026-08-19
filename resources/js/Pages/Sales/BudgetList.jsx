@@ -4,6 +4,7 @@ import { useNotification } from '../../Contexts/NotificationContext';
 import { useAuth } from '../../Contexts/AuthContext';
 import { formatDate } from '../../utils/formatters';
 import ConfirmModal from '../../Components/Modals/ConfirmModal';
+import AdminPasswordModal from '../../Components/Modals/AdminPasswordModal';
 import Pagination from '../../Components/Pagination';
 import ViewModal from '../../Components/Modals/ViewModal';
 import { sendWhatsApp } from '../../utils/whatsapp';
@@ -23,6 +24,7 @@ export default function BudgetList() {
     
     // Estados para Modais de Confirmação
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: 'warning', title: '', message: '', onConfirm: null });
+    const [passwordModal, setPasswordModal] = useState({ isOpen: false, orderId: null });
 
     const fetchBudgets = async (pageNumber = 1, searchTerm = search, sortField = sortBy, direction = sortDir) => {
         setLoading(true);
@@ -78,22 +80,20 @@ export default function BudgetList() {
     };
 
     const handleDelete = (id) => {
-        setConfirmModal({
-            isOpen: true,
-            type: 'danger',
-            title: 'Excluir Orçamento',
-            message: 'Deseja excluir definitivamente este orçamento? Esta ação é irreversível.',
-            onConfirm: async () => {
-                try {
-                    await axios.delete(`/api/v1/sales/orders/${id}`);
-                    notify('success', 'Orçamento excluído com sucesso.');
-                    fetchBudgets();
-                } catch (error) {
-                    notify('error', 'Erro ao excluir orçamento.');
-                }
-                setConfirmModal(prev => ({ ...prev, isOpen: false }));
-            }
-        });
+        setPasswordModal({ isOpen: true, orderId: id });
+    };
+
+    const confirmDelete = async (password) => {
+        try {
+            await axios.delete(`/api/v1/sales/orders/${passwordModal.orderId}`, {
+                data: { admin_password: password }
+            });
+            notify('success', 'Orçamento excluído com sucesso.');
+            setPasswordModal({ isOpen: false, orderId: null });
+            fetchBudgets();
+        } catch (error) {
+            notify('error', error.response?.data?.message || 'Erro ao excluir orçamento. Verifique a senha.');
+        }
     };
 
     const handleSendEmail = (budget) => {
@@ -150,6 +150,14 @@ export default function BudgetList() {
                 type={confirmModal.type}
                 onConfirm={confirmModal.onConfirm}
                 onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            />
+
+            <AdminPasswordModal 
+                isOpen={passwordModal.isOpen}
+                onClose={() => setPasswordModal({ isOpen: false, orderId: null })}
+                onConfirm={confirmDelete}
+                title="Excluir Orçamento"
+                message="Deseja excluir definitivamente este orçamento? Esta ação é irreversível e exige a senha de um administrador."
             />
 
             <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">

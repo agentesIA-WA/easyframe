@@ -21,12 +21,15 @@ class EmployeeController extends Controller
             });
         }
 
-        if ($request->has('store_id')) {
-            $targetStoreId = $request->get('store_id');
+        $targetStoreId = $request->input('store_id') ?? $request->header('X-Store-Id');
+        if ($targetStoreId) {
             $query->where(function($q) use ($targetStoreId) {
                 $q->whereHas('stores', function($sq) use ($targetStoreId) {
                     $sq->where('stores.id', $targetStoreId);
                 })->orWhere('store_id', $targetStoreId);
+                if ((int)$targetStoreId === 1) {
+                    $q->orWhereNull('store_id');
+                }
             });
         }
 
@@ -64,18 +67,23 @@ class EmployeeController extends Controller
             $storeIds = [(int)$validated['store_id']];
         }
         if (!empty($storeIds)) {
-            $validated['store_id'] = $storeIds[0];
+            $validated['store_id'] = (int) $storeIds[0];
         }
 
         $employee = Employee::create($validated);
         if (!empty($storeIds)) {
-            $employee->stores()->sync($storeIds);
+            try { $employee->stores()->sync($storeIds); } catch (\Exception $e) { \Illuminate\Support\Facades\Log::error('Erro sync store employee: ' . $e->getMessage()); }
         }
 
-        if ($employee->user_id && !empty($storeIds)) {
-            $employee->user->stores()->syncWithoutDetaching($storeIds);
+        $targetUser = $employee->user ?? \App\Models\User::where('name', $employee->name)->orWhere('id', $employee->user_id)->first();
+        if ($targetUser) {
+            if (!$employee->user_id) {
+                $employee->update(['user_id' => $targetUser->id]);
+            }
+            try { $targetUser->stores()->syncWithoutDetaching($storeIds); } catch (\Exception $e) { \Illuminate\Support\Facades\Log::error('Erro sync store user: ' . $e->getMessage()); }
         }
 
+        $employee->unsetRelations();
         return response()->json($employee->load(['user', 'store', 'stores']), 201);
     }
 
@@ -102,23 +110,29 @@ class EmployeeController extends Controller
 
         $storeIds = $validated['store_ids'] ?? null;
         if (is_array($storeIds)) {
-            $validated['store_id'] = !empty($storeIds) ? $storeIds[0] : null;
+            $validated['store_id'] = !empty($storeIds) ? (int) $storeIds[0] : null;
         }
 
         $employee->update($validated);
 
+        $targetUser = $employee->user ?? \App\Models\User::where('name', $employee->name)->orWhere('id', $employee->user_id)->first();
+        if ($targetUser && !$employee->user_id) {
+            $employee->update(['user_id' => $targetUser->id]);
+        }
+
         if (is_array($storeIds)) {
-            $employee->stores()->sync($storeIds);
-            if ($employee->user_id) {
-                $employee->user->stores()->sync($storeIds);
+            try { $employee->stores()->sync($storeIds); } catch (\Exception $e) { \Illuminate\Support\Facades\Log::error('Erro sync update store employee: ' . $e->getMessage()); }
+            if ($targetUser) {
+                try { $targetUser->stores()->sync($storeIds); } catch (\Exception $e) { \Illuminate\Support\Facades\Log::error('Erro sync update store user: ' . $e->getMessage()); }
             }
         } elseif (!empty($validated['store_id'])) {
-            $employee->stores()->syncWithoutDetaching([$validated['store_id']]);
-            if ($employee->user_id) {
-                $employee->user->stores()->syncWithoutDetaching([$validated['store_id']]);
+            try { $employee->stores()->syncWithoutDetaching([$validated['store_id']]); } catch (\Exception $e) { \Illuminate\Support\Facades\Log::error('Erro sync update single store: ' . $e->getMessage()); }
+            if ($targetUser) {
+                try { $targetUser->stores()->syncWithoutDetaching([$validated['store_id']]); } catch (\Exception $e) { \Illuminate\Support\Facades\Log::error('Erro sync update single store user: ' . $e->getMessage()); }
             }
         }
 
+        $employee->unsetRelations();
         return response()->json($employee->load(['user', 'store', 'stores']));
     }
 

@@ -69,7 +69,8 @@ export const formatLongDate = (date) => {
  */
 export const formatLongDateTime = (date) => {
     if (!date) return '';
-    const d = new Date(date);
+    const safeDate = typeof date === 'string' ? date.replace('Z', '') : date;
+    const d = new Date(safeDate);
     const datePart = d.toLocaleDateString('pt-BR', { 
         weekday: 'long', 
         day: '2-digit', 

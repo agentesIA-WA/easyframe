@@ -19,7 +19,10 @@ class OrderController extends Controller
         $storeId = $request->header('X-Store-Id');
         if ($storeId) {
             $query->where(function($q) use ($storeId) {
-                $q->where('orders.store_id', $storeId)->orWhereNull('orders.store_id');
+                $q->where('orders.store_id', $storeId);
+                if ((int)$storeId === 1) {
+                    $q->orWhereNull('orders.store_id');
+                }
             });
         }
 
@@ -407,8 +410,26 @@ class OrderController extends Controller
             $updateData['framer_id'] = $request->framer_id;
         }
 
-        // Se estiver sendo entregue, salva a data de entrega real e a observação
+        // Se estiver sendo entregue, salva a data de entrega real e a observação e valida o pagamento
         if ($request->status === 'delivered') {
+            $existingPayments = $order->payments;
+            $alreadyPaid = $existingPayments->reduce(function($acc, $p) {
+                $val = (float)($p->paid_value ?? $p->value ?? 0);
+                if ($p->status === 'P' || !is_null($p->paid_at)) {
+                    return $acc + ($val > 0 ? $val : (float)$p->value);
+                }
+                return $acc;
+            }, 0.0);
+            
+            $totalOrderValue = (float) $order->total_value;
+            $remainingBalance = max(0.0, round($totalOrderValue - (float)$alreadyPaid, 2));
+
+            if ($remainingBalance > 0.01) {
+                return response()->json([
+                    'message' => 'O sistema não permite dar baixa em um pedido com pendência de pagamento (Saldo pendente: R$ ' . number_format($remainingBalance, 2, ',', '.') . ').'
+                ], 422);
+            }
+
             $updateData['delivered_at'] = $request->delivered_at;
             $updateData['delivery_observation'] = $request->delivery_observation;
         }
@@ -452,19 +473,35 @@ class OrderController extends Controller
             'observation' => 'nullable|string',
         ]);
 
-        return DB::transaction(function () use ($request, $order) {
-            $existingPayments = $order->payments;
+        $existingPayments = $order->payments;
 
-            $alreadyPaid = $existingPayments->reduce(function($acc, $p) {
-                $val = (float)($p->paid_value ?? $p->value ?? 0);
-                if ($p->status === 'P' || !is_null($p->paid_at)) {
-                    return $acc + ($val > 0 ? $val : (float)$p->value);
-                }
-                return $acc;
-            }, 0.0);
+        $alreadyPaid = $existingPayments->reduce(function($acc, $p) {
+            $val = (float)($p->paid_value ?? $p->value ?? 0);
+            if ($p->status === 'P' || !is_null($p->paid_at)) {
+                return $acc + ($val > 0 ? $val : (float)$p->value);
+            }
+            return $acc;
+        }, 0.0);
 
-            $totalOrderValue = (float) $order->total_value;
-            $remainingBalance = max(0.0, round($totalOrderValue - (float)$alreadyPaid, 2));
+        $totalOrderValue = (float) $order->total_value;
+        $remainingBalance = max(0.0, round($totalOrderValue - (float)$alreadyPaid, 2));
+
+        if ($remainingBalance > 0.01) {
+            $allocatedTotal = 0.0;
+            if ($request->has('payments') && is_array($request->payments)) {
+                $allocatedTotal = collect($request->payments)->sum('value');
+            } else if ($request->payment_method_id || $request->payment_method) {
+                $allocatedTotal = $remainingBalance;
+            }
+
+            if (round($allocatedTotal, 2) < $remainingBalance) {
+                return response()->json([
+                    'message' => 'O sistema não permite dar baixa em um pedido com pendência de pagamento. O saldo restante de R$ ' . number_format($remainingBalance, 2, ',', '.') . ' deve ser quitado.'
+                ], 422);
+            }
+        }
+
+        return DB::transaction(function () use ($request, $order, $remainingBalance) {
 
             // Limpa parcelas abertas antigas para reinserção exata da baixa
             $order->payments()->where(function($q) {
@@ -611,15 +648,42 @@ class OrderController extends Controller
         return response()->json($order->load(['customer', 'seller', 'framer', 'items.subItems', 'payments']));
     }
 
-    public function destroy(Order $order)
+    public function destroy(Request $request, Order $order)
     {
-        if ($order->status !== 'draft') {
-            return response()->json(['message' => 'Apenas orçamentos podem ser excluídos.'], 422);
+        $request->validate([
+            'admin_password' => 'required|string',
+        ]);
+
+        // Verificar se a senha pertence a algum administrador ativo
+        $admins = \App\Models\User::where('is_admin', true)->get();
+        $authorizedAdmin = null;
+
+        foreach ($admins as $admin) {
+            if (\Illuminate\Support\Facades\Hash::check($request->admin_password, $admin->password)) {
+                $authorizedAdmin = $admin;
+                break;
+            }
         }
+
+        if (!$authorizedAdmin) {
+            return response()->json(['message' => 'Senha de administrador inválida ou incorreta.'], 403);
+        }
+
+        // Registrar log de auditoria
+        \App\Modules\Core\Models\AuditLog::create([
+            'user_id' => $authorizedAdmin->id,
+            'description' => "Exclusão de Pedido/Orçamento #{$order->id}",
+            'metadata' => [
+                'order_id' => $order->id,
+                'total_value' => $order->total_value,
+                'status_before_delete' => $order->status,
+                'customer_id' => $order->customer_id
+            ]
+        ]);
 
         $order->delete();
 
-        return response()->json(['message' => 'Orçamento excluído com sucesso.']);
+        return response()->json(['message' => 'Registro excluído com sucesso.']);
     }
 
     public function logRescue(Request $request, Order $order)

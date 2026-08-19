@@ -324,7 +324,7 @@ const ReportScreen = () => {
                 const grouped = getGroupedOrderPayments(item.payments);
                 return grouped.map(g => (g.count > 1 ? `${g.count}x ${g.method}` : g.method)).join(' ').toLowerCase();
             case 'delivery_date':
-                return item.delivery_date ? new Date(item.delivery_date).getTime() : 0;
+                return item.delivery_date ? new Date(typeof item.delivery_date === 'string' ? item.delivery_date.replace('Z', '') : item.delivery_date).getTime() : 0;
             case 'gross_value':
                 return grossValue;
             case 'discount_value':
@@ -351,7 +351,8 @@ const ReportScreen = () => {
                 const sellerStr = (item.seller?.name || item.seller_name || '').toLowerCase();
                 const framerStr = (item.framer?.name || '').toLowerCase();
                 const statusStr = (item.status || '').toLowerCase();
-                const deliveryStr = item.delivery_date ? new Date(item.delivery_date).toLocaleDateString('pt-BR') : '';
+                const safeDeliveryDate = typeof item.delivery_date === 'string' ? item.delivery_date.replace('Z', '') : item.delivery_date;
+                const deliveryStr = item.delivery_date ? new Date(safeDeliveryDate).toLocaleDateString('pt-BR') : '';
                 const pmStr = getGroupedOrderPayments(item.payments).map(g => g.method).join(' ').toLowerCase();
 
                 return idStr.includes(term) ||
@@ -1154,7 +1155,8 @@ const ReportScreen = () => {
                                     const discountValue = parseFloat(item.total_discount ?? item.discount ?? 0) || (item.items ? item.items.reduce((acc, i) => acc + parseFloat(i.item_discount || 0), 0) : 0);
                                     const grossValue = item.gross_value ? parseFloat(item.gross_value) : (netValue + discountValue);
                                     const groupedPayments = getGroupedOrderPayments(item.payments);
-                                    const deliveryDateFormatted = item.delivery_date ? new Date(item.delivery_date).toLocaleDateString('pt-BR') : '—';
+                                    const safeListDelivery = typeof item.delivery_date === 'string' ? item.delivery_date.replace('Z', '') : item.delivery_date;
+                                    const deliveryDateFormatted = item.delivery_date ? new Date(safeListDelivery).toLocaleDateString('pt-BR') : '—';
                                     const fullyPaid = isOrderFullyPaid(item);
 
                                     return (

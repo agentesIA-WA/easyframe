@@ -35,6 +35,27 @@ class User extends Authenticatable
     }
 
     /**
+     * Retorna todas as lojas que o usuário tem acesso, unificando a tabela de usuários com o cadastro de RH.
+     */
+    public function getAllowedStores()
+    {
+        if ($this->is_admin || $this->id === 1) {
+            return \App\Modules\Core\Models\Store::where('is_active', true)->orderBy('id', 'asc')->get();
+        }
+
+        $stores = $this->stores()->where('is_active', true)->get();
+
+        // Busca o cadastro de funcionário associado (por ID ou pelo Nome) para unificar o acesso às unidades do RH
+        $employee = $this->employee ?? \App\Modules\HR\Models\Employee::where('user_id', $this->id)->orWhere('name', $this->name)->first();
+        if ($employee) {
+            $employeeStores = $employee->stores()->where('is_active', true)->get();
+            $stores = $stores->merge($employeeStores);
+        }
+
+        return $stores->unique(fn($item) => (int) $item->id)->sortBy(fn($item) => (int) $item->id)->values();
+    }
+
+    /**
      * Verifica se o usuário tem permissão de acesso a uma Loja específica.
      */
     public function hasStoreAccess(int $storeId): bool
@@ -43,7 +64,13 @@ class User extends Authenticatable
             return true;
         }
 
-        return $this->stores()->where('stores.id', $storeId)->exists();
+        foreach ($this->getAllowedStores() as $store) {
+            if ((int) $store->id === (int) $storeId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
