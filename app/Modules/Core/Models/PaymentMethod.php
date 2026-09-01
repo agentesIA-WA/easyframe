@@ -12,7 +12,11 @@ class PaymentMethod extends Model
     protected $casts = [
         'is_cash' => 'boolean',
         'is_active' => 'boolean',
+        'is_placeholder' => 'boolean',
         'commission_rate' => 'float',
+        'settlement_days' => 'integer',
+        'installment_interval_days' => 'integer',
+        'fee_percentage' => 'float',
     ];
 
     /**

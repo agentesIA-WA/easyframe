@@ -12,4 +12,5 @@ Route::prefix('hr')->group(function () {
     Route::post('/employees', [EmployeeController::class, 'store'])->middleware('module.permission:employees,create');
     Route::put('/employees/{employee}', [EmployeeController::class, 'update'])->middleware('module.permission:employees,update');
     Route::delete('/employees/{employee}', [EmployeeController::class, 'destroy'])->middleware('module.permission:employees,delete');
+    Route::put('/employees/{employee}/restore', [EmployeeController::class, 'restore'])->withTrashed()->middleware('module.permission:employees,update');
 });

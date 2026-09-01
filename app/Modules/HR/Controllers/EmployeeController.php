@@ -5,12 +5,17 @@ namespace App\Modules\HR\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\HR\Models\Employee;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class EmployeeController extends Controller
 {
     public function index(Request $request)
     {
         $query = Employee::with(['user', 'store', 'stores']);
+        
+        if ($request->has('include_deleted') && filter_var($request->get('include_deleted'), FILTER_VALIDATE_BOOLEAN)) {
+            $query->withTrashed();
+        }
 
         if ($request->has('search')) {
             $search = $request->get('search');
@@ -50,7 +55,11 @@ class EmployeeController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'tax_id' => 'required|string|unique:employees,tax_id',
+            'tax_id' => [
+                'required',
+                'string',
+                Rule::unique('employees', 'tax_id')->whereNull('deleted_at')
+            ],
             'store_id' => 'nullable|integer|exists:stores,id',
             'store_ids' => 'nullable|array',
             'store_ids.*' => 'integer|exists:stores,id',
@@ -60,6 +69,11 @@ class EmployeeController extends Controller
             'hired_at' => 'nullable|date',
             'can_sell' => 'boolean',
             'is_molder' => 'boolean',
+        ], [
+            'tax_id.unique' => 'Este CPF já está cadastrado no sistema.',
+            'tax_id.required' => 'O CPF é obrigatório.',
+            'name.required' => 'O nome é obrigatório.',
+            'hired_at.date' => 'A data de admissão é inválida.',
         ]);
 
         $storeIds = $validated['store_ids'] ?? [];
@@ -96,7 +110,11 @@ class EmployeeController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'tax_id' => 'required|string|unique:employees,tax_id,' . $employee->id,
+            'tax_id' => [
+                'required',
+                'string',
+                Rule::unique('employees', 'tax_id')->ignore($employee->id)->whereNull('deleted_at')
+            ],
             'store_id' => 'nullable|integer|exists:stores,id',
             'store_ids' => 'nullable|array',
             'store_ids.*' => 'integer|exists:stores,id',
@@ -106,6 +124,11 @@ class EmployeeController extends Controller
             'hired_at' => 'nullable|date',
             'can_sell' => 'boolean',
             'is_molder' => 'boolean',
+        ], [
+            'tax_id.unique' => 'Este CPF já está cadastrado no sistema.',
+            'tax_id.required' => 'O CPF é obrigatório.',
+            'name.required' => 'O nome é obrigatório.',
+            'hired_at.date' => 'A data de admissão é inválida.',
         ]);
 
         $storeIds = $validated['store_ids'] ?? null;
@@ -140,5 +163,14 @@ class EmployeeController extends Controller
     {
         $employee->delete();
         return response()->json(null, 204);
+    }
+
+    public function restore($id)
+    {
+        $employee = Employee::withTrashed()->findOrFail($id);
+        $employee->restore();
+        
+        $employee->unsetRelations();
+        return response()->json($employee->load(['user', 'store', 'stores']));
     }
 }

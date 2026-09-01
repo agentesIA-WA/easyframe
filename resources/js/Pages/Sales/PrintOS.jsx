@@ -268,22 +268,41 @@ export default function PrintOS() {
                 const totalDiscount = itemsDiscount + generalDiscount;
                 const netTotal = parseFloat(order.total_value || 0);
                 const grossTotal = netTotal + totalDiscount;
+                const totalAllocated = (order.payments || []).reduce((acc, p) => acc + (parseFloat(p.value) || 0), 0);
+                const diff = netTotal - totalAllocated;
+                const hasDiff = diff > 0.05;
 
                 return (
                     <div className="mb-3 pt-2.5 border-t-2 border-slate-900 flex justify-between items-end gap-3">
-                        {totalDiscount > 0 ? (
-                            <div className="bg-rose-50 border border-rose-300 rounded-lg p-2 flex items-center gap-2 print:bg-rose-50">
-                                <div className="w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center font-black text-xs shadow-sm print:bg-rose-600">
-                                    %
+                        <div className="flex gap-3">
+                            {totalDiscount > 0 && (
+                                <div className="bg-rose-50 border border-rose-300 rounded-lg p-2 flex items-center gap-2 print:bg-rose-50">
+                                    <div className="w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center font-black text-xs shadow-sm print:bg-rose-600">
+                                        %
+                                    </div>
+                                    <div>
+                                        <p className="text-[8px] font-black uppercase text-rose-600 tracking-wider">Desconto Total Concedido</p>
+                                        <p className="text-sm font-black text-rose-700">
+                                            - R$ {totalDiscount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-[8px] font-black uppercase text-rose-600 tracking-wider">Desconto Total Concedido</p>
-                                    <p className="text-sm font-black text-rose-700">
-                                        - R$ {totalDiscount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </p>
+                            )}
+
+                            {hasDiff && (
+                                <div className="bg-amber-50 border border-amber-300 rounded-lg p-2 flex items-center gap-2 print:bg-amber-50">
+                                    <div className="w-7 h-7 rounded-full bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm print:bg-amber-500">
+                                        !
+                                    </div>
+                                    <div>
+                                        <p className="text-[8px] font-black uppercase text-amber-700 tracking-wider">A Receber / Saldo Devedor</p>
+                                        <p className="text-sm font-black text-amber-800">
+                                            R$ {diff.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        ) : <div />}
+                            )}
+                        </div>
 
                         <div className="text-right space-y-0.5">
                             {totalDiscount > 0 && (
@@ -293,7 +312,7 @@ export default function PrintOS() {
                                 </div>
                             )}
                             <div>
-                                <p className="text-[9px] font-black uppercase text-slate-400">Total Líquido a Pagar</p>
+                                <p className="text-[9px] font-black uppercase text-slate-400">Valor total do pedido</p>
                                 <p className="text-xl font-black text-slate-900">R$ {netTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                             </div>
                         </div>

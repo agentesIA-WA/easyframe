@@ -15,6 +15,7 @@ Route::prefix('auth')->group(function () {
 Route::prefix('identity')->group(function () {
     Route::get('users', [UserController::class, 'index']);
     Route::post('users/create-account', [UserController::class, 'createAccount']);
+    Route::put('users/{user}/account', [UserController::class, 'updateAccount']);
     Route::post('users/{user}/permissions', [UserController::class, 'syncPermissions']);
     Route::get('modules', [ModuleController::class, 'index']);
 });

@@ -96,7 +96,7 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!isValidCPFCNPJ(formData.tax_id)) {
+        if (!isTaxIdValid) {
             setTaxIdTouched(true);
             notify('error', 'O CPF ou CNPJ digitado é inválido. Por favor, verifique o documento.');
             return;
@@ -191,7 +191,6 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
                                 setTaxIdTouched(true);
                             }}
                             onBlur={() => setTaxIdTouched(true)}
-                            required
                         />
                         {taxIdTouched && !isTaxIdValid && (
                             <p className="text-rose-500 text-xs font-bold mt-1">Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.</p>
@@ -238,6 +237,7 @@ const CustomerForm = ({ customer = null, onSaved = null, onCancel = null, embedd
                             placeholder="(00) 00000-0000"
                             value={formData.phone}
                             onChange={(e) => setFormData({...formData, phone: maskPhone(e.target.value)})}
+                            required
                         />
                     </div>
                 </div>

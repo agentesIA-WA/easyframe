@@ -126,13 +126,23 @@ export default function BudgetList() {
     const getStatusBadge = (status) => {
         const styles = {
             draft: 'bg-amber-100 text-amber-800 border-amber-200',
+            confirmed: 'bg-amber-100 text-amber-800 border-amber-200',
             production: 'bg-blue-100 text-blue-800 border-blue-200',
             ready: 'bg-green-100 text-green-800 border-green-200',
+            delivered: 'bg-purple-100 text-purple-800 border-purple-200',
+            delivered_unpaid: 'bg-rose-100 text-rose-800 border-rose-200',
+            finished: 'bg-slate-100 text-slate-700 border-slate-300',
+            canceled: 'bg-red-100 text-red-800 border-red-200',
         };
         const labels = {
             draft: 'Orçamento',
+            confirmed: 'Confirmado',
             production: 'Em Produção',
             ready: 'Pronto',
+            delivered: 'Entregue',
+            delivered_unpaid: 'Entregue (Não Pago)',
+            finished: 'Finalizado',
+            canceled: 'Cancelado',
         };
         return (
             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider whitespace-nowrap inline-block shadow-sm ${styles[status] || 'bg-slate-100'}`}>

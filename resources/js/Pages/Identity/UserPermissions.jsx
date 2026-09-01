@@ -14,6 +14,8 @@ const UserPermissions = () => {
     const [saving, setSaving] = useState(false);
     const [creatingAccount, setCreatingAccount] = useState(false);
     const [accountData, setAccountData] = useState({ email: '', password: '' });
+    const [updatingAccount, setUpdatingAccount] = useState(false);
+    const [editAccountData, setEditAccountData] = useState({ email: '', password: '' });
     const [showGuidedBanner, setShowGuidedBanner] = useState(false);
     const { notify } = useNotification();
     const matrixRef = useRef(null);
@@ -43,6 +45,24 @@ const UserPermissions = () => {
             notify('error', error.response?.data?.message || 'Erro ao criar conta.');
         } finally {
             setCreatingAccount(false);
+        }
+    };
+
+    const handleUpdateAccount = async (e) => {
+        e.preventDefault();
+        setUpdatingAccount(true);
+        try {
+            const res = await axios.put(`/api/v1/identity/users/${selectedUser.id}/account`, editAccountData);
+            notify('success', 'Credenciais atualizadas com sucesso!');
+            
+            const updatedUser = res.data.user;
+            setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, email: updatedUser.email } : u));
+            setSelectedUser(prev => ({ ...prev, email: updatedUser.email }));
+            setEditAccountData(prev => ({ ...prev, password: '' }));
+        } catch (error) {
+            notify('error', error.response?.data?.message || 'Erro ao atualizar credenciais.');
+        } finally {
+            setUpdatingAccount(false);
         }
     };
 
@@ -81,6 +101,7 @@ const UserPermissions = () => {
             });
             setUserPermissions(permissionsMap);
             setIsAdmin(!!selectedUser.is_admin);
+            setEditAccountData({ email: selectedUser.email && selectedUser.email !== 'Sem conta de acesso' ? selectedUser.email : '', password: '' });
         } else {
             setIsAdmin(false);
         }
@@ -331,8 +352,44 @@ const UserPermissions = () => {
                                 </div>
                             </div>
                         ) : (
-                            <div className="p-0 overflow-x-auto flex-1">
-                                <table className="w-full text-left border-collapse">
+                            <div className="flex-1 flex flex-col">
+                                <div className="p-8 border-b border-slate-100 bg-white">
+                                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-tighter mb-4">Credenciais de Acesso</h3>
+                                    <form onSubmit={handleUpdateAccount} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                        <div>
+                                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Login / E-mail</label>
+                                            <input 
+                                                type="email" 
+                                                required
+                                                className="w-full border-slate-200 rounded-xl font-bold focus:ring-primary-500 h-10"
+                                                value={editAccountData.email}
+                                                onChange={e => setEditAccountData({...editAccountData, email: e.target.value})}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Nova Senha (Opcional)</label>
+                                            <input 
+                                                type="password" 
+                                                minLength="6"
+                                                className="w-full border-slate-200 rounded-xl font-bold focus:ring-primary-500 h-10"
+                                                value={editAccountData.password}
+                                                onChange={e => setEditAccountData({...editAccountData, password: e.target.value})}
+                                                placeholder="Deixe em branco para manter"
+                                            />
+                                        </div>
+                                        <div>
+                                            <button 
+                                                type="submit"
+                                                disabled={updatingAccount || (editAccountData.email === selectedUser.email && !editAccountData.password)}
+                                                className="w-full bg-slate-800 text-white h-10 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-slate-900/20 hover:bg-slate-700 transition transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {updatingAccount ? 'Salvando...' : 'Atualizar Credenciais'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div className="p-0 overflow-x-auto flex-1">
+                                    <table className="w-full text-left border-collapse">
                                     <thead className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest sticky top-0 z-10">
                                         <tr>
                                             <th className="px-8 py-4 w-1/2">Funcionalidade / Tela</th>
@@ -379,6 +436,7 @@ const UserPermissions = () => {
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
                         )}
                     </>
                 ) : (

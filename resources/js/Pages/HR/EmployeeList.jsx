@@ -14,6 +14,7 @@ const EmployeeList = () => {
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState('name');
     const [sortDir, setSortDir] = useState('asc');
+    const [includeDeleted, setIncludeDeleted] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [viewingEmployee, setViewingEmployee] = useState(null);
     const [editingEmployee, setEditingEmployee] = useState(null);
@@ -40,10 +41,10 @@ const EmployeeList = () => {
         }
     };
 
-    const fetchEmployees = async (page = 1, searchTerm = search, sortField = sortBy, direction = sortDir) => {
+    const fetchEmployees = async (page = 1, searchTerm = search, sortField = sortBy, direction = sortDir, incDeleted = includeDeleted) => {
         setLoading(true);
         try {
-            const response = await axios.get(`/api/v1/hr/employees?page=${page}&search=${searchTerm}&sort_by=${sortField}&sort_direction=${direction}`);
+            const response = await axios.get(`/api/v1/hr/employees?page=${page}&search=${searchTerm}&sort_by=${sortField}&sort_direction=${direction}&include_deleted=${incDeleted}`);
             setEmployees(response.data.data);
             setMeta(response.data);
         } catch (error) {
@@ -60,11 +61,11 @@ const EmployeeList = () => {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            fetchEmployees(1, search, sortBy, sortDir);
+            fetchEmployees(1, search, sortBy, sortDir, includeDeleted);
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [search, sortBy, sortDir]);
+    }, [search, sortBy, sortDir, includeDeleted]);
 
     const handleSort = (field) => {
         const newDir = sortBy === field && sortDir === 'asc' ? 'desc' : 'asc';
@@ -114,9 +115,21 @@ const EmployeeList = () => {
             try {
                 await axios.delete(`/api/v1/hr/employees/${id}`);
                 notify('success', 'Funcionário removido com sucesso.');
-                fetchEmployees(1, search);
+                fetchEmployees(1, search, sortBy, sortDir, includeDeleted);
             } catch (error) {
                 notify('error', 'Ocorreu um erro ao tentar remover o funcionário.');
+            }
+        }
+    };
+
+    const handleRestore = async (id) => {
+        if (confirm('Deseja restaurar este funcionário?')) {
+            try {
+                await axios.put(`/api/v1/hr/employees/${id}/restore`);
+                notify('success', 'Funcionário restaurado com sucesso.');
+                fetchEmployees(1, search, sortBy, sortDir, includeDeleted);
+            } catch (error) {
+                notify('error', 'Ocorreu um erro ao tentar restaurar o funcionário.');
             }
         }
     };
@@ -138,9 +151,14 @@ const EmployeeList = () => {
                 notify('success', 'Novo funcionário cadastrado.');
             }
             setIsModalOpen(false);
-            fetchEmployees(1, search);
+            fetchEmployees(1, search, sortBy, sortDir, includeDeleted);
         } catch (error) {
-            notify('error', 'Erro ao salvar funcionário. Verifique os dados inseridos.');
+            if (error.response && error.response.status === 422 && error.response.data && error.response.data.errors) {
+                const errorMessages = Object.values(error.response.data.errors).flat();
+                errorMessages.forEach(msg => notify('error', msg));
+            } else {
+                notify('error', 'Erro ao salvar funcionário. Verifique os dados inseridos.');
+            }
         }
     };
 
@@ -162,6 +180,15 @@ const EmployeeList = () => {
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-300 hover:text-white transition-colors bg-slate-700/50 px-3 py-1.5 rounded border border-slate-600">
+                            <input 
+                                type="checkbox" 
+                                checked={includeDeleted} 
+                                onChange={(e) => setIncludeDeleted(e.target.checked)} 
+                                className="rounded bg-slate-800 border-slate-500 text-primary-500 focus:ring-primary-500 focus:ring-offset-slate-800 h-3.5 w-3.5"
+                            />
+                            Mostrar Inativos
+                        </label>
                         <button 
                             onClick={() => handleOpenModal()}
                             className="w-full md:w-auto bg-primary-600 text-white px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-tighter hover:bg-primary-700 transition"
@@ -200,8 +227,13 @@ const EmployeeList = () => {
                             ) : employees.length === 0 ? (
                                 <tr><td colSpan="7" className="text-center py-8 text-xs text-slate-500">Nenhum funcionário cadastrado.</td></tr>
                             ) : employees.map(e => (
-                                <tr key={e.id} className="hover:bg-slate-50/80 transition-colors">
-                                    <td className="px-3 py-2.5 text-xs font-bold text-slate-800 uppercase min-w-[130px] max-w-[200px] truncate" title={e.name}>{e.name}</td>
+                                <tr key={e.id} className={`transition-colors ${e.deleted_at ? 'bg-red-50/50 hover:bg-red-50 opacity-80' : 'hover:bg-slate-50/80'}`}>
+                                    <td className="px-3 py-2.5 text-xs font-bold text-slate-800 uppercase min-w-[130px] max-w-[200px] truncate" title={e.name}>
+                                        <div className="flex items-center gap-2">
+                                            {e.name}
+                                            {e.deleted_at && <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-[9px] font-black uppercase">Inativo</span>}
+                                        </div>
+                                    </td>
                                     <td className="px-3 py-2.5 text-xs min-w-[150px] max-w-[260px]">
                                         <div className="flex flex-wrap gap-1 max-w-[250px]">
                                             {e.stores && e.stores.length > 0 ? (
@@ -231,12 +263,20 @@ const EmployeeList = () => {
                                             <button onClick={() => setViewingEmployee(e)} title="Visualizar Detalhes" className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 hover:text-blue-800 transition-colors">
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                             </button>
-                                            <button onClick={() => handleOpenModal(e)} title="Editar Funcionário" className="p-1.5 bg-amber-50 text-amber-600 rounded hover:bg-amber-100 hover:text-amber-800 transition-colors">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                            </button>
-                                            <button onClick={() => handleDelete(e.id)} title="Excluir Funcionário" className="p-1.5 bg-rose-50 text-rose-600 rounded hover:bg-rose-100 hover:text-rose-800 transition-colors">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                            </button>
+                                            {!e.deleted_at ? (
+                                                <>
+                                                    <button onClick={() => handleOpenModal(e)} title="Editar Funcionário" className="p-1.5 bg-amber-50 text-amber-600 rounded hover:bg-amber-100 hover:text-amber-800 transition-colors">
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                    </button>
+                                                    <button onClick={() => handleDelete(e.id)} title="Excluir Funcionário" className="p-1.5 bg-rose-50 text-rose-600 rounded hover:bg-rose-100 hover:text-rose-800 transition-colors">
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <button onClick={() => handleRestore(e.id)} title="Restaurar Funcionário" className="p-1.5 bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-100 hover:text-emerald-800 transition-colors flex items-center gap-1 font-bold">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

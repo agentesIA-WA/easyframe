@@ -40,9 +40,9 @@ class CustomerController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'tax_id' => ['required', 'string', 'unique:customers,tax_id', new \App\Rules\CpfCnpjRule()],
+            'tax_id' => ['nullable', 'string', 'unique:customers,tax_id', new \App\Rules\CpfCnpjRule()],
             'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string',
+            'phone' => 'required|string',
             'cep' => 'nullable|string',
             'uf' => 'nullable|string|max:2',
             'city' => 'nullable|string',
@@ -67,9 +67,9 @@ class CustomerController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'tax_id' => ['required', 'string', 'unique:customers,tax_id,' . $customer->id, new \App\Rules\CpfCnpjRule()],
+            'tax_id' => ['nullable', 'string', 'unique:customers,tax_id,' . $customer->id, new \App\Rules\CpfCnpjRule()],
             'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string',
+            'phone' => 'required|string',
             'cep' => 'nullable|string',
             'uf' => 'nullable|string|max:2',
             'city' => 'nullable|string',

@@ -23,18 +23,24 @@ export default function SettleOrderModal({ isOpen, onClose, order, onSuccess, no
     const [loading, setLoading] = useState(false);
     const [loadingMethods, setLoadingMethods] = useState(true);
     const [isQuickModalOpen, setIsQuickModalOpen] = useState(false);
+    const [showAdminOverride, setShowAdminOverride] = useState(false);
+    const [adminPassword, setAdminPassword] = useState('');
 
     const totalValue = parseFloat(order.total_value || order.total_sales || 0);
 
-    const alreadyPaid = (order.payments || []).reduce((acc, p) => {
-        const val = parseFloat(p.paid_value || p.value || 0);
-        if (p.status === 'P' || p.paid_at) {
-            return acc + (val > 0 ? val : parseFloat(p.value || 0));
-        }
-        return acc;
+    const alreadyAllocated = (order.payments || []).reduce((acc, p) => {
+        if (p.status === 'C' || p.status === 'CANCELADO') return acc;
+        
+        const pm = paymentMethods.find(m => 
+            (p.payment_method_id && m.id == p.payment_method_id) || 
+            (p.payment_method && m.description.toUpperCase() === p.payment_method.toUpperCase())
+        );
+        if (pm && pm.is_placeholder) return acc;
+
+        return acc + parseFloat(p.value || 0);
     }, 0);
 
-    const remainingBalance = Math.max(0, parseFloat((totalValue - alreadyPaid).toFixed(2)));
+    const remainingBalance = Math.max(0, parseFloat((totalValue - alreadyAllocated).toFixed(2)));
     const allocatedTotal = paymentList.reduce((acc, p) => acc + (parseFloat(p.value) || 0), 0);
     const balanceDiff = parseFloat((remainingBalance - allocatedTotal).toFixed(2));
     const isBalanceValid = remainingBalance <= 0.01 || Math.abs(balanceDiff) <= 0.01;
@@ -122,7 +128,7 @@ export default function SettleOrderModal({ isOpen, onClose, order, onSuccess, no
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (remainingBalance > 0.01) {
+        if (remainingBalance > 0.01 && !showAdminOverride) {
             if (!isBalanceValid) {
                 if (notify) notify('warning', `A soma das formas de pagamento deve ser exatamente R$ ${remainingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`);
                 return;
@@ -139,11 +145,16 @@ export default function SettleOrderModal({ isOpen, onClose, order, onSuccess, no
             }
         }
 
+        if (showAdminOverride && !adminPassword) {
+            if (notify) notify('warning', 'Digite a senha do administrador para liberar a baixa.');
+            return;
+        }
+
         setLoading(true);
 
         try {
             const payload = {
-                payments: remainingBalance > 0.01 ? paymentList.map(p => ({
+                payments: remainingBalance > 0.01 && !showAdminOverride ? paymentList.map(p => ({
                     payment_method_id: p.payment_method_id,
                     value: parseFloat(p.value) || 0,
                     installments: parseInt(p.installments) || 1,
@@ -155,6 +166,8 @@ export default function SettleOrderModal({ isOpen, onClose, order, onSuccess, no
                 })) : [],
                 delivered_at: deliveredAt ? `${deliveredAt} 12:00:00` : null,
                 delivery_observation: deliveryObservation,
+                is_unpaid_override: showAdminOverride,
+                admin_password: adminPassword
             };
 
             const res = await axios.post(`/api/v1/sales/orders/${order.id}/settle`, payload);
@@ -217,9 +230,9 @@ export default function SettleOrderModal({ isOpen, onClose, order, onSuccess, no
                             </div>
 
                             <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-                                <span className="block text-[10px] font-bold text-slate-400 uppercase">Já Pago</span>
-                                <span className="text-sm font-black text-emerald-600">
-                                    R$ {alreadyPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                <span className="block text-[10px] font-bold text-slate-400 uppercase">Valor Alocado</span>
+                                <span className="text-sm font-black text-indigo-600">
+                                    R$ {alreadyAllocated.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </span>
                             </div>
 
@@ -466,6 +479,54 @@ export default function SettleOrderModal({ isOpen, onClose, order, onSuccess, no
                         </div>
                     </div>
 
+                    {/* Admin Override Section */}
+                    {remainingBalance > 0.01 && (
+                        <div className="border-t border-slate-100 pt-4">
+                            {!showAdminOverride ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAdminOverride(true)}
+                                    className="text-[10px] font-black uppercase text-amber-600 hover:text-amber-700 underline decoration-amber-300 underline-offset-4 flex items-center gap-1.5"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                    Liberação Admin (Entregar sem quitar)
+                                </button>
+                            ) : (
+                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <h4 className="text-[11px] font-black uppercase text-amber-900 flex items-center gap-1.5 mb-1">
+                                                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                                Autorização de Entrega
+                                            </h4>
+                                            <p className="text-[10px] font-bold text-amber-700">Esta ação liquidará o pedido sem receber o valor pendente, registrando auditoria no sistema.</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowAdminOverride(false);
+                                                setAdminPassword('');
+                                            }}
+                                            className="text-amber-600 hover:text-amber-800 p-1"
+                                            title="Cancelar Liberação"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <input
+                                            type="password"
+                                            placeholder="Digite a Senha do Administrador"
+                                            className="w-full sm:w-64 border-amber-300 rounded-lg focus:border-amber-500 focus:ring-amber-500 text-xs h-9 bg-white"
+                                            value={adminPassword}
+                                            onChange={(e) => setAdminPassword(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Submit Footer */}
                     <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
                         <button
@@ -477,8 +538,8 @@ export default function SettleOrderModal({ isOpen, onClose, order, onSuccess, no
                         </button>
                         <button
                             type="submit"
-                            disabled={loading || (remainingBalance > 0.01 && !isBalanceValid)}
-                            className="px-6 py-2.5 text-xs font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center gap-2 disabled:opacity-50"
+                            disabled={loading || (remainingBalance > 0.01 && !isBalanceValid && !showAdminOverride)}
+                            className={`px-6 py-2.5 text-xs font-black uppercase tracking-wider text-white rounded-xl shadow-lg transition flex items-center gap-2 disabled:opacity-50 ${showAdminOverride ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'}`}
                         >
                             {loading ? (
                                 <>
@@ -488,9 +549,9 @@ export default function SettleOrderModal({ isOpen, onClose, order, onSuccess, no
                             ) : (
                                 <>
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d={showAdminOverride ? "M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" : "M5 13l4 4L19 7"} />
                                     </svg>
-                                    <span>Concluir Baixa do Pedido</span>
+                                    <span>{showAdminOverride ? "Confirmar Liberação" : "Concluir Baixa do Pedido"}</span>
                                 </>
                             )}
                         </button>

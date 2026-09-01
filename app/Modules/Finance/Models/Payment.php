@@ -18,6 +18,7 @@ class Payment extends BaseModel
         'parent_id', 
         'installment_number', 
         'due_date', 
+        'expected_settlement_date',
         'status', 
         'value', 
         'paid_value', 

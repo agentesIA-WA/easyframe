@@ -8,7 +8,7 @@ import AdminPasswordModal from '../../Components/Modals/AdminPasswordModal';
 import Pagination from '../../Components/Pagination';
 import ViewModal from '../../Components/Modals/ViewModal';
 import SettleOrderModal from '../../Components/Modals/SettleOrderModal';
-import { sendWhatsApp } from '../../utils/whatsapp';
+import ForceStatusModal from '../../Components/Modals/ForceStatusModal';
 
 export default function OrderList() {
     const { notify } = useNotification();
@@ -37,6 +37,9 @@ export default function OrderList() {
 
     // Estado para Modal de Baixa de Pedido
     const [settleModal, setSettleModal] = useState({ isOpen: false, order: null });
+
+    // Estado para Modal de Forçar Status
+    const [forceStatusModal, setForceStatusModal] = useState({ isOpen: false, orderId: null, currentStatus: '' });
 
     // Estado para Modal de Exclusão com Senha
     const [passwordModal, setPasswordModal] = useState({ isOpen: false, orderId: null });
@@ -180,7 +183,7 @@ export default function OrderList() {
             return;
         }
 
-        const requiresAdmin = ['production', 'ready', 'delivered'].includes(rescueModal.status);
+        const requiresAdmin = ['production', 'ready', 'delivered', 'delivered_unpaid'].includes(rescueModal.status);
         if (requiresAdmin && !rescueModal.admin_password) {
             notify('warning', 'A senha de administrador é obrigatória para editar este pedido.');
             return;
@@ -222,18 +225,41 @@ export default function OrderList() {
         }
     };
 
+    const confirmForceStatus = async (newStatus, password) => {
+        try {
+            await axios.patch(`/api/v1/sales/orders/${forceStatusModal.orderId}/status`, {
+                status: newStatus,
+                is_force_status: true,
+                admin_password: password
+            });
+            notify('success', 'Status forçado com sucesso.');
+            setForceStatusModal({ isOpen: false, orderId: null, currentStatus: '' });
+            fetchOrders();
+        } catch (error) {
+            notify('error', error.response?.data?.message || 'Erro ao forçar status. Verifique a senha.');
+        }
+    };
+
     const getStatusBadge = (status) => {
         const styles = {
+            draft: 'bg-slate-100 text-slate-800 border-slate-200',
             confirmed: 'bg-amber-100 text-amber-800 border-amber-200',
             production: 'bg-blue-100 text-blue-800 border-blue-200',
             ready: 'bg-green-100 text-green-800 border-green-200',
             delivered: 'bg-purple-100 text-purple-800 border-purple-200',
+            delivered_unpaid: 'bg-rose-100 text-rose-800 border-rose-200',
+            finished: 'bg-slate-100 text-slate-700 border-slate-300',
+            canceled: 'bg-red-100 text-red-800 border-red-200',
         };
         const labels = {
+            draft: 'Rascunho',
             confirmed: 'Confirmado',
             production: 'Em Produção',
             ready: 'Pronto',
             delivered: 'Entregue',
+            delivered_unpaid: 'Entregue (Não Pago)',
+            finished: 'Finalizado',
+            canceled: 'Cancelado',
         };
         return (
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider whitespace-nowrap inline-block shadow-xs ${styles[status] || 'bg-slate-100'}`}>
@@ -259,6 +285,13 @@ export default function OrderList() {
                 onConfirm={confirmDelete}
                 title="Excluir Pedido"
                 message="Deseja excluir definitivamente este pedido? Esta ação é irreversível e exige a senha de um administrador."
+            />
+
+            <ForceStatusModal
+                isOpen={forceStatusModal.isOpen}
+                onClose={() => setForceStatusModal({ isOpen: false, orderId: null, currentStatus: '' })}
+                onConfirm={confirmForceStatus}
+                currentStatus={forceStatusModal.currentStatus}
             />
 
             {/* Modal de Início de Produção */}
@@ -382,11 +415,11 @@ export default function OrderList() {
                                 ></textarea>
                             </div>
                             
-                            {['production', 'ready', 'delivered'].includes(rescueModal.status) && (
+                            {['production', 'ready', 'delivered', 'delivered_unpaid'].includes(rescueModal.status) && (
                                 <div className="mt-4 pt-4 border-t border-amber-200">
                                     <label className="block text-xs font-black uppercase text-amber-700 mb-2 tracking-widest">Senha de Administrador <span className="text-red-500">*</span></label>
                                     <div className="p-3 bg-white/50 border border-amber-200 text-amber-800 text-xs rounded-xl font-medium mb-3">
-                                        Este pedido está em <strong>{rescueModal.status === 'delivered' ? 'Entregue' : (rescueModal.status === 'ready' ? 'Pronto' : 'Produção')}</strong>. Somente administradores podem forçar a edição.
+                                        Este pedido está em <strong>{rescueModal.status === 'delivered' ? 'Entregue' : (rescueModal.status === 'delivered_unpaid' ? 'Entregue (Não Pago)' : (rescueModal.status === 'ready' ? 'Pronto' : 'Produção'))}</strong>. Somente administradores podem forçar a edição.
                                     </div>
                                     <input
                                         type="password"
@@ -528,15 +561,6 @@ export default function OrderList() {
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                                 </svg>
                                             </button>
-                                            <button 
-                                                onClick={() => sendWhatsApp(order)}
-                                                className="p-1.5 bg-emerald-50 text-emerald-600 border border-emerald-200/60 rounded-md hover:bg-emerald-100 hover:scale-105 transition-all shadow-2xs flex items-center justify-center"
-                                                title="Enviar Resumo e PDF via WhatsApp"
-                                            >
-                                                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                                                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-                                                </svg>
-                                            </button>
                                             {order.status === 'ready' && (
                                                 <button 
                                                     onClick={() => setSettleModal({ isOpen: true, order })}
@@ -548,7 +572,7 @@ export default function OrderList() {
                                                     </svg>
                                                 </button>
                                             )}
-                                            {order.status !== 'delivered' && order.status !== 'finished' && (
+                                            {order.status !== 'delivered' && order.status !== 'delivered_unpaid' && order.status !== 'finished' && (
                                                 <button 
                                                     onClick={() => handleUpdateStatus(order.id, order.status)}
                                                     className="p-1.5 bg-primary-600 text-white rounded-md hover:bg-primary-700 hover:scale-105 transition-all shadow-2xs"
@@ -559,6 +583,15 @@ export default function OrderList() {
                                                     </svg>
                                                 </button>
                                             )}
+                                            <button 
+                                                onClick={() => setForceStatusModal({ isOpen: true, orderId: order.id, currentStatus: order.status })}
+                                                className="p-1.5 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 hover:scale-105 transition-all shadow-2xs"
+                                                title="Alterar Status Manualmente (Admin)"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                                </svg>
+                                            </button>
                                             <button 
                                                 onClick={() => handleDelete(order.id)}
                                                 className="p-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 hover:scale-105 transition-all shadow-2xs"

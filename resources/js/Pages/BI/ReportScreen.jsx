@@ -462,6 +462,22 @@ const ReportScreen = () => {
             );
         }
 
+        if (item.status === 'delivered_unpaid') {
+            return (
+                <span className="px-2.5 py-1 bg-rose-100 text-rose-800 rounded-lg text-[10px] font-black uppercase tracking-wider border border-rose-200 whitespace-nowrap">
+                    Entregue (Não Pago)
+                </span>
+            );
+        }
+
+        if (item.status === 'canceled') {
+            return (
+                <span className="px-2.5 py-1 bg-red-100 text-red-800 rounded-lg text-[10px] font-black uppercase tracking-wider border border-red-200 whitespace-nowrap">
+                    Cancelado
+                </span>
+            );
+        }
+
         return (
             <span className="px-2 py-1 bg-slate-100 rounded text-[10px] font-bold uppercase text-slate-500 whitespace-nowrap">
                 {item.status || item.due_date || item.expense_date || item.production_date || 'N/A'}

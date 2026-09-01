@@ -137,11 +137,19 @@ class OrderController extends Controller
                 $method = $pmData['payment_method'] ?? null;
                 $isCash = false;
 
+                $pm = null;
+                $settlementType = 'immediate';
+                $settlementDays = 1;
+                $intervalDays = 30;
+
                 if ($paymentMethodId) {
                     $pm = \App\Modules\Core\Models\PaymentMethod::find($paymentMethodId);
                     if ($pm) {
                         $method = $pm->description;
                         $isCash = (bool) $pm->is_cash;
+                        $settlementType = $pm->settlement_type ?? 'immediate';
+                        $settlementDays = $pm->settlement_days ?? 1;
+                        $intervalDays = $pm->installment_interval_days ?? 30;
                     }
                 }
 
@@ -149,6 +157,8 @@ class OrderController extends Controller
                     $upperMethod = mb_strtoupper($method);
                     if (str_contains($upperMethod, 'PIX') || str_contains($upperMethod, 'DINHEIRO') || str_contains($upperMethod, 'DÉBITO') || str_contains($upperMethod, 'DEBITO')) {
                         $isCash = true;
+                        $settlementType = 'immediate';
+                        $settlementDays = 1;
                     }
                 }
 
@@ -159,6 +169,11 @@ class OrderController extends Controller
                 $installmentValue = $assignedValue / $installments;
                 
                 $isPaidExplicit = !empty($pmData['is_paid']) || ($pmData['status'] ?? '') === 'P';
+                
+                // Formas de pagamento "placeholder" (ex: A Pagar na Entrega) nunca podem ser marcadas como pagas
+                if (isset($pm) && $pm && $pm->is_placeholder) {
+                    $isPaidExplicit = false;
+                }
                 
                 if ($order->status === 'delivered') {
                     if ($method && mb_strtoupper(trim($method)) === 'A PAGAR NA ENTREGA') {
@@ -191,14 +206,46 @@ class OrderController extends Controller
                         $chequeAc = $pmData['cheque_account'] ?? null;
                     }
 
-                    $dueDate = $isCash 
-                        ? now()->format('Y-m-d') 
-                        : now()->addMonths($i - 1)->addDays(30)->format('Y-m-d');
+                    $dueDate = null;
+                    $expectedSettlementDate = null;
+
+                    if ($settlementType === 'immediate') {
+                        $dueDate = clone $order->created_at;
+                        $expectedSettlementDate = $dueDate->copy()->addDays($settlementDays);
+                        $dueDate = $dueDate->format('Y-m-d');
+                        $expectedSettlementDate = $expectedSettlementDate->format('Y-m-d');
+                    } elseif ($settlementType === 'credit_card') {
+                        $daysToAdd = $settlementDays + (($i - 1) * $intervalDays);
+                        $expectedSettlementDate = clone $order->created_at;
+                        $expectedSettlementDate->addDays($daysToAdd);
+                        $dueDate = $expectedSettlementDate->format('Y-m-d');
+                        $expectedSettlementDate = $expectedSettlementDate->format('Y-m-d');
+                    } elseif ($settlementType === 'custom_date') {
+                        $baseDate = !empty($pmData['due_date']) 
+                            ? \Carbon\Carbon::parse($pmData['due_date']) 
+                            : clone $order->created_at;
+                        $dueDateObj = $baseDate->copy()->addDays(($i - 1) * $intervalDays);
+                        $dueDate = $dueDateObj->format('Y-m-d');
+                        $expectedSettlementDate = $dueDateObj->copy()->addDays($settlementDays)->format('Y-m-d');
+                    } else {
+                        // Fallback
+                        $dueDate = $isCash 
+                            ? $order->created_at->format('Y-m-d') 
+                            : $order->created_at->copy()->addMonths($i - 1)->addDays(30)->format('Y-m-d');
+                        $expectedSettlementDate = clone $dueDate;
+                    }
+                    if ($paymentStatus !== 'P' && $order->delivery_date) {
+                        $baseDate = \Carbon\Carbon::parse($order->delivery_date);
+                        $dueDateObj = $baseDate->copy()->addDays(($i - 1) * $intervalDays);
+                        $dueDate = $dueDateObj->format('Y-m-d');
+                        $expectedSettlementDate = $dueDateObj->copy()->addDays($settlementDays)->format('Y-m-d');
+                    }
 
                     \App\Modules\Finance\Models\Payment::create([
                         'order_id' => $order->id,
                         'status' => $paymentStatus,
                         'due_date' => $dueDate,
+                        'expected_settlement_date' => $expectedSettlementDate,
                         'value' => $installmentValue,
                         'paid_value' => $paymentStatus === 'P' ? $installmentValue : 0,
                         'paid_at' => $paymentStatus === 'P' ? now() : null,
@@ -224,10 +271,19 @@ class OrderController extends Controller
 
         $method = null;
         $isCash = false;
+        $settlementType = 'immediate';
+        $settlementDays = 1;
+        $intervalDays = 30;
+
         if ($paymentMethodId) {
             $pm = \App\Modules\Core\Models\PaymentMethod::find($paymentMethodId);
-            $method = $pm ? $pm->description : null;
-            $isCash = $pm ? (bool) $pm->is_cash : false;
+            if ($pm) {
+                $method = $pm->description;
+                $isCash = (bool) $pm->is_cash;
+                $settlementType = $pm->settlement_type ?? 'immediate';
+                $settlementDays = $pm->settlement_days ?? 1;
+                $intervalDays = $pm->installment_interval_days ?? 30;
+            }
         }
 
         // Caso o método não venha de ID cadastrado mas por string, infere se é à vista
@@ -235,6 +291,8 @@ class OrderController extends Controller
             $upperMethod = mb_strtoupper($method);
             if (str_contains($upperMethod, 'PIX') || str_contains($upperMethod, 'DINHEIRO') || str_contains($upperMethod, 'DÉBITO') || str_contains($upperMethod, 'DEBITO')) {
                 $isCash = true;
+                $settlementType = 'immediate';
+                $settlementDays = 1;
             }
         }
 
@@ -272,16 +330,39 @@ class OrderController extends Controller
                 $chequeAc = $details['cheque_account'] ?? null;
             }
 
-            // Para pagamentos à vista (isCash = true), o vencimento é no dia atual (now()).
-            // Para pagamentos a prazo, vence em parcelas mensais (a partir do 30º dia se a prazo).
-            $dueDate = $isCash 
-                ? now()->format('Y-m-d') 
-                : now()->addMonths($i - 1)->addDays(30)->format('Y-m-d');
+            $dueDate = null;
+            $expectedSettlementDate = null;
+
+            if ($settlementType === 'immediate') {
+                $dueDate = clone $order->created_at;
+                $expectedSettlementDate = $dueDate->copy()->addDays($settlementDays);
+                $dueDate = $dueDate->format('Y-m-d');
+                $expectedSettlementDate = $expectedSettlementDate->format('Y-m-d');
+            } elseif ($settlementType === 'credit_card') {
+                $daysToAdd = $settlementDays + (($i - 1) * $intervalDays);
+                $expectedSettlementDate = clone $order->created_at;
+                $expectedSettlementDate->addDays($daysToAdd);
+                $dueDate = $expectedSettlementDate->format('Y-m-d');
+                $expectedSettlementDate = $expectedSettlementDate->format('Y-m-d');
+            } elseif ($settlementType === 'custom_date') {
+                $baseDate = !empty($details['due_date']) 
+                    ? \Carbon\Carbon::parse($details['due_date']) 
+                    : clone $order->created_at;
+                $dueDateObj = $baseDate->copy()->addDays(($i - 1) * $intervalDays);
+                $dueDate = $dueDateObj->format('Y-m-d');
+                $expectedSettlementDate = $dueDateObj->copy()->addDays($settlementDays)->format('Y-m-d');
+            } else {
+                $dueDate = $isCash 
+                    ? $order->created_at->format('Y-m-d') 
+                    : $order->created_at->copy()->addMonths($i - 1)->addDays(30)->format('Y-m-d');
+                $expectedSettlementDate = $dueDate;
+            }
 
             \App\Modules\Finance\Models\Payment::create([
                 'order_id' => $order->id,
                 'status' => $paymentStatus,
                 'due_date' => $dueDate,
+                'expected_settlement_date' => $expectedSettlementDate,
                 'value' => $installmentValue,
                 'paid_value' => $paymentStatus === 'P' ? $installmentValue : 0,
                 'paid_at' => $paymentStatus === 'P' ? now() : null,
@@ -387,7 +468,9 @@ class OrderController extends Controller
         }
 
         return DB::transaction(function () use ($order) {
-            $order->update(['status' => 'confirmed']);
+            $order->status = 'confirmed';
+            $order->created_at = now();
+            $order->save();
             
             // Ativa os pagamentos/parcelas que estavam como rascunho
             $order->payments()->where('status', 'D')->update(['status' => 'A']);
@@ -413,32 +496,65 @@ class OrderController extends Controller
     public function updateStatus(Request $request, Order $order)
     {
         $request->validate([
-            'status' => 'required|in:draft,confirmed,production,ready,delivered,difficult_delivery,delivered_unpaid',
+            'status' => 'required|in:draft,confirmed,production,ready,delivered,difficult_delivery,delivered_unpaid,finished,canceled',
             'framer_id' => 'nullable|exists:employees,id',
             'delivered_at' => 'nullable|date',
-            'delivery_observation' => 'nullable|string'
+            'delivery_observation' => 'nullable|string',
+            'is_force_status' => 'nullable|boolean',
+            'admin_password' => 'nullable|string'
         ]);
 
         $updateData = ['status' => $request->status];
+
+        if ($request->boolean('is_force_status')) {
+            $request->validate(['admin_password' => 'required|string']);
+
+            $admins = \App\Models\User::where('is_admin', true)->get();
+            $authorizedAdmin = null;
+            foreach ($admins as $admin) {
+                if (\Illuminate\Support\Facades\Hash::check($request->admin_password, $admin->password)) {
+                    $authorizedAdmin = $admin;
+                    break;
+                }
+            }
+
+            if (!$authorizedAdmin) {
+                return response()->json(['message' => 'Senha de administrador inválida ou incorreta para esta operação.'], 403);
+            }
+
+            \App\Modules\Core\Models\AuditLog::create([
+                'user_id' => $authorizedAdmin->id,
+                'description' => "Alteração forçada de status do Pedido #{$order->id}",
+                'metadata' => [
+                    'order_id' => $order->id,
+                    'old_status' => $order->status,
+                    'new_status' => $request->status
+                ]
+            ]);
+        }
 
         // Se estiver entrando em produção, deve salvar quem está produzindo
         if ($request->status === 'production' && $request->has('framer_id')) {
             $updateData['framer_id'] = $request->framer_id;
         }
 
-        // Se estiver sendo entregue, salva a data de entrega real e a observação e valida o pagamento
-        if ($request->status === 'delivered') {
+        // Se estiver sendo entregue normalmente (não forçado), valida o pagamento e salva dados da entrega
+        if (!$request->boolean('is_force_status') && $request->status === 'delivered') {
             $existingPayments = $order->payments;
-            $alreadyPaid = $existingPayments->reduce(function($acc, $p) {
-                $val = (float)($p->paid_value ?? $p->value ?? 0);
-                if ($p->status === 'P' || !is_null($p->paid_at)) {
-                    return $acc + ($val > 0 ? $val : (float)$p->value);
+            $placeholderMethods = \App\Modules\Core\Models\PaymentMethod::where('is_placeholder', true)->pluck('description')->map(fn($m) => mb_strtoupper($m))->toArray();
+
+            $alreadyAllocated = $existingPayments->reduce(function($acc, $p) use ($placeholderMethods) {
+                if ($p->status === 'C' || $p->status === 'CANCELADO') {
+                    return $acc;
                 }
-                return $acc;
+                if ($p->payment_method && in_array(mb_strtoupper($p->payment_method), $placeholderMethods)) {
+                    return $acc;
+                }
+                return $acc + (float)$p->value;
             }, 0.0);
             
             $totalOrderValue = (float) $order->total_value;
-            $remainingBalance = max(0.0, round($totalOrderValue - (float)$alreadyPaid, 2));
+            $remainingBalance = max(0.0, round($totalOrderValue - (float)$alreadyAllocated, 2));
 
             if ($remainingBalance > 0.01) {
                 return response()->json([
@@ -487,42 +603,79 @@ class OrderController extends Controller
             'cheque_account' => 'nullable|string',
             'card_brand' => 'nullable|string',
             'observation' => 'nullable|string',
+            'is_unpaid_override' => 'nullable|boolean',
+            'admin_password' => 'nullable|string',
         ]);
 
         $existingPayments = $order->payments;
 
-        $alreadyPaid = $existingPayments->reduce(function($acc, $p) {
-            $val = (float)($p->paid_value ?? $p->value ?? 0);
-            if ($p->status === 'P' || !is_null($p->paid_at)) {
-                return $acc + ($val > 0 ? $val : (float)$p->value);
+        $placeholderMethods = \App\Modules\Core\Models\PaymentMethod::where('is_placeholder', true)->pluck('description')->map(fn($m) => mb_strtoupper($m))->toArray();
+
+        $alreadyAllocated = $existingPayments->reduce(function($acc, $p) use ($placeholderMethods) {
+            if ($p->status === 'C' || $p->status === 'CANCELADO') {
+                return $acc;
             }
-            return $acc;
+            if ($p->payment_method && in_array(mb_strtoupper($p->payment_method), $placeholderMethods)) {
+                return $acc;
+            }
+            return $acc + (float)$p->value;
         }, 0.0);
 
         $totalOrderValue = (float) $order->total_value;
-        $remainingBalance = max(0.0, round($totalOrderValue - (float)$alreadyPaid, 2));
+        $remainingBalance = max(0.0, round($totalOrderValue - (float)$alreadyAllocated, 2));
 
-        if ($remainingBalance > 0.01) {
-            $allocatedTotal = 0.0;
-            if ($request->has('payments') && is_array($request->payments)) {
-                $allocatedTotal = collect($request->payments)->sum('value');
-            } else if ($request->payment_method_id || $request->payment_method) {
-                $allocatedTotal = $remainingBalance;
+        $isOverride = $request->boolean('is_unpaid_override');
+        $authorizedAdmin = null;
+
+        if ($isOverride) {
+            $request->validate(['admin_password' => 'required|string']);
+            
+            $admins = \App\Models\User::where('is_admin', true)->get();
+            foreach ($admins as $admin) {
+                if (\Illuminate\Support\Facades\Hash::check($request->admin_password, $admin->password)) {
+                    $authorizedAdmin = $admin;
+                    break;
+                }
             }
 
-            if (round($allocatedTotal, 2) < $remainingBalance) {
-                return response()->json([
-                    'message' => 'O sistema não permite dar baixa em um pedido com pendência de pagamento. O saldo restante de R$ ' . number_format($remainingBalance, 2, ',', '.') . ' deve ser quitado.'
-                ], 422);
+            if (!$authorizedAdmin) {
+                return response()->json(['message' => 'Senha de administrador inválida ou incorreta para a liberação.'], 403);
+            }
+        } else {
+            if ($remainingBalance > 0.01) {
+                $allocatedTotal = 0.0;
+                if ($request->has('payments') && is_array($request->payments)) {
+                    $allocatedTotal = collect($request->payments)->sum('value');
+                } else if ($request->payment_method_id || $request->payment_method) {
+                    $allocatedTotal = $remainingBalance;
+                }
+
+                if (round($allocatedTotal, 2) < $remainingBalance) {
+                    return response()->json([
+                        'message' => 'O sistema não permite dar baixa em um pedido com pendência de pagamento. O saldo restante de R$ ' . number_format($remainingBalance, 2, ',', '.') . ' deve ser quitado.'
+                    ], 422);
+                }
             }
         }
 
-        return DB::transaction(function () use ($request, $order, $remainingBalance) {
+        return DB::transaction(function () use ($request, $order, $remainingBalance, $placeholderMethods, $isOverride, $authorizedAdmin) {
 
-            // Limpa parcelas abertas antigas para reinserção exata da baixa
-            $order->payments()->where(function($q) {
-                $q->where('status', '!=', 'P')->whereNull('paid_at');
-            })->delete();
+            if ($isOverride) {
+                \App\Modules\Core\Models\AuditLog::create([
+                    'user_id' => $authorizedAdmin->id,
+                    'description' => "Liberação de Pedido Entregue sem quitar (Override) #{$order->id}",
+                    'metadata' => [
+                        'order_id' => $order->id,
+                        'total_value' => $order->total_value,
+                        'remaining_balance' => $remainingBalance
+                    ]
+                ]);
+            } else {
+                // Remove parcelas que são marcadas como placeholder (ex: A Pagar na Entrega),
+                // pois elas não valem como recebíveis e serão substituídas pela baixa real.
+                $order->payments()->get()->filter(function($p) use ($placeholderMethods) {
+                    return in_array(mb_strtoupper($p->payment_method), $placeholderMethods);
+                })->each->delete();
 
             if ($remainingBalance > 0.01) {
                 $paymentList = [];
@@ -602,10 +755,11 @@ class OrderController extends Controller
                     'paid_value' => DB::raw('value')
                 ]);
             }
+        } // Close else for $isOverride
 
-            $deliveredAt = $request->delivered_at ? $request->delivered_at : now();
+        $deliveredAt = $request->delivered_at ? $request->delivered_at : now();
             $order->update([
-                'status' => 'delivered',
+                'status' => $isOverride ? 'delivered_unpaid' : 'delivered',
                 'delivered_at' => $deliveredAt,
                 'delivery_observation' => $request->delivery_observation ?? $order->delivery_observation
             ]);
@@ -710,7 +864,7 @@ class OrderController extends Controller
 
     public function logRescue(Request $request, Order $order)
     {
-        $requiresAdmin = in_array($order->status, ['production', 'ready', 'delivered']);
+        $requiresAdmin = in_array($order->status, ['production', 'ready', 'delivered', 'delivered_unpaid']);
 
         $rules = [
             'reason' => 'required|string|max:1000',

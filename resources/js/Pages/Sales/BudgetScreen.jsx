@@ -50,7 +50,8 @@ const BudgetScreen = () => {
             cheque_numbers: [],
             cheque_agencies: [],
             cheque_accounts: [],
-            observation: ''
+            observation: '',
+            due_date: ''
         }
     ]);
 
@@ -62,8 +63,8 @@ const BudgetScreen = () => {
         width: '',
         quantity: 1,
         increase_percent: '',
-        discount_percent: ''
     });
+    const [editingPeçaId, setEditingPeçaId] = useState(null);
 
     // ESTADO PARA ADIÇÃO DE SUB-ITEM (MATERIAL)
     const [targetPeçaId, setTargetPeçaId] = useState('');
@@ -129,7 +130,8 @@ const BudgetScreen = () => {
                                     cheque_numbers: p.cheque_number ? [p.cheque_number] : [],
                                     cheque_agencies: p.cheque_agency ? [p.cheque_agency] : [],
                                     cheque_accounts: p.cheque_account ? [p.cheque_account] : [],
-                                    observation: p.observation || ''
+                                    observation: p.observation || '',
+                                    due_date: p.due_date ? p.due_date.substring(0, 10) : ''
                                 });
                             }
                         });
@@ -257,24 +259,54 @@ const BudgetScreen = () => {
     const calculateGrandTotal = () => peças.reduce((acc, p) => acc + calculateItemTotal(p), 0);
     const totalValue = calculateGrandTotal();
 
-    const handleAddPeça = () => {
+    const handleEditPeça = (peça) => {
+        setNewPeça({
+            description: peça.description,
+            observation: peça.observation,
+            height: peça.height,
+            width: peça.width,
+            quantity: peça.quantity,
+            increase_percent: peça.increase_percent,
+            discount_percent: peça.discount_percent
+        });
+        setEditingPeçaId(peça.id);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleSavePeça = () => {
         if (!newPeça.description || (!isWholesale && (!newPeça.height || !newPeça.width))) {
             notify('warning', isWholesale ? 'Preencha a descrição da peça.' : 'Preencha a descrição e as medidas da peça.');
             return;
         }
 
-        const peça = {
-            ...newPeça,
-            id: 'P-' + Date.now(),
-            increase_percent: parseFloat(newPeça.increase_percent || 0),
-            discount_percent: parseFloat(newPeça.discount_percent || 0),
-            sub_items: []
-        };
+        if (editingPeçaId) {
+            setPeças(peças.map(p => 
+                p.id === editingPeçaId 
+                ? { 
+                    ...p, 
+                    ...newPeça, 
+                    increase_percent: parseFloat(newPeça.increase_percent || 0),
+                    discount_percent: parseFloat(newPeça.discount_percent || 0)
+                  } 
+                : p
+            ));
+            setEditingPeçaId(null);
+            notify('success', 'Peça atualizada.');
+        } else {
+            const peça = {
+                ...newPeça,
+                id: 'P-' + Date.now(),
+                increase_percent: parseFloat(newPeça.increase_percent || 0),
+                discount_percent: parseFloat(newPeça.discount_percent || 0),
+                sub_items: []
+            };
 
-        setPeças([...peças, peça]);
-        if (!targetPeçaId) setTargetPeçaId(peça.id);
+            setPeças([...peças, peça]);
+            if (!targetPeçaId) setTargetPeçaId(peça.id);
+            notify('success', 'Peça adicionada ao orçamento.');
+        }
+
         setNewPeça({ description: '', observation: '', height: '', width: '', quantity: 1, increase_percent: '', discount_percent: '' });
-        notify('success', 'Peça adicionada ao orçamento.');
     };
 
     const handlePeçaIncreasePercentChange = (peçaId, newPct) => {
@@ -368,7 +400,8 @@ const BudgetScreen = () => {
                 cheque_numbers: [],
                 cheque_agencies: [],
                 cheque_accounts: [],
-                observation: ''
+                observation: '',
+                due_date: ''
             }
         ]);
     };
@@ -436,7 +469,8 @@ const BudgetScreen = () => {
                         cheque_numbers: p.cheque_numbers,
                         cheque_agencies: p.cheque_agencies,
                         cheque_accounts: p.cheque_accounts,
-                        observation: p.observation || null
+                        observation: p.observation || null,
+                        due_date: p.due_date || null
                     };
                 }),
                 payment_method_id: paymentList[0]?.payment_method_id || null,
@@ -506,7 +540,8 @@ const BudgetScreen = () => {
                             cheque_numbers: p.cheque_numbers,
                             cheque_agencies: p.cheque_agencies,
                             cheque_accounts: p.cheque_accounts,
-                            observation: p.observation || null
+                            observation: p.observation || null,
+                            due_date: p.due_date || null
                         };
                     }),
                     payment_method_id: paymentList[0]?.payment_method_id || null,
@@ -645,13 +680,24 @@ const BudgetScreen = () => {
                                 onChange={(e) => setNewPeça({ ...newPeça, discount_percent: e.target.value })}
                             />
                         </div>
-                        <div className="md:col-span-2">
+                        <div className="md:col-span-2 flex gap-1">
                             <button
-                                onClick={handleAddPeça}
-                                className="w-full bg-primary-600 text-white h-9 rounded font-black text-[10px] uppercase hover:bg-primary-700 transition shadow-lg"
+                                onClick={handleSavePeça}
+                                className={`w-full ${editingPeçaId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary-600 hover:bg-primary-700'} text-white h-9 rounded font-black text-[10px] uppercase transition shadow-lg`}
                             >
-                                + Adicionar
+                                {editingPeçaId ? 'Salvar' : '+ Adic.'}
                             </button>
+                            {editingPeçaId && (
+                                <button
+                                    onClick={() => {
+                                        setEditingPeçaId(null);
+                                        setNewPeça({ description: '', observation: '', height: '', width: '', quantity: 1, increase_percent: '', discount_percent: '' });
+                                    }}
+                                    className="w-full bg-slate-400 hover:bg-slate-500 text-white h-9 rounded font-black text-[10px] uppercase transition shadow-lg"
+                                >
+                                    Canc.
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -745,7 +791,10 @@ const BudgetScreen = () => {
                                 <div className="md:w-1/4 bg-slate-50 p-3 rounded border border-slate-100">
                                     <div className="flex justify-between items-start mb-2">
                                         <span className="text-[10px] bg-slate-800 text-white px-2 py-0.5 rounded font-black">ITEM {pIdx + 1}</span>
-                                        <button onClick={() => handleRemovePeça(peça.id)} className="text-rose-400 hover:text-rose-600 transition text-xs">✕ EXCLUIR</button>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleEditPeça(peça)} className="text-blue-400 hover:text-blue-600 font-bold transition text-[10px] uppercase">✎ Editar</button>
+                                            <button onClick={() => handleRemovePeça(peça.id)} className="text-rose-400 hover:text-rose-600 font-bold transition text-[10px] uppercase">✕ Excluir</button>
+                                        </div>
                                     </div>
                                     <h3 className="font-black text-slate-700 uppercase text-sm">{peça.description}</h3>
                                     {(peça.height || peça.width) ? (
@@ -1008,6 +1057,18 @@ const BudgetScreen = () => {
                                         </div>
                                     )}
 
+                                    {pmObj && pmObj.settlement_type === 'custom_date' && (
+                                        <div className="md:col-span-3">
+                                            <label className="block text-[10px] font-black text-slate-500 uppercase mb-1">Data de Vencimento Inicial</label>
+                                            <input
+                                                type="date"
+                                                className="w-full border-slate-200 rounded-lg font-bold text-xs h-10 bg-white"
+                                                value={pLine.due_date || ''}
+                                                onChange={e => handleUpdatePaymentLine(pLine.id, 'due_date', e.target.value)}
+                                            />
+                                        </div>
+                                    )}
+
                                     <div className={isCartao || isCheque ? 'md:col-span-12' : 'md:col-span-5'}>
                                         <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Observações desta Modalidade</label>
                                         <input
@@ -1100,7 +1161,7 @@ const BudgetScreen = () => {
                             )}
                         </button>
                     </div>
-                    <div className="md:col-span-3">
+                    <div className="md:col-span-2">
                         <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Vendedor</label>
                         <select
                             className="w-full border-slate-200 rounded text-sm font-bold h-10 border-2 border-indigo-100 bg-white"
@@ -1112,15 +1173,43 @@ const BudgetScreen = () => {
                         </select>
                     </div>
 
-                    <div className="md:col-span-2 flex items-center bg-slate-50 p-2.5 rounded-lg border border-slate-100 h-10">
-                        <input
-                            id="is_order_toggle"
-                            type="checkbox"
-                            className="w-4 h-4 text-primary-600 rounded border-slate-300 focus:ring-primary-500"
-                            checked={isOrder}
-                            onChange={e => setIsOrder(e.target.checked)}
-                        />
-                        <label htmlFor="is_order_toggle" className="ml-2 text-[10px] font-black text-slate-600 uppercase cursor-pointer">Salvar como Pedido</label>
+                    <div className="md:col-span-3">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Status / Tipo</label>
+                        {isOrder ? (
+                            <div className="flex items-center gap-2">
+                                <select
+                                    className="flex-1 border-slate-200 rounded text-xs font-bold h-10 border-2 border-primary-100 bg-white"
+                                    value={orderStatus === 'draft' ? 'confirmed' : orderStatus}
+                                    onChange={(e) => setOrderStatus(e.target.value)}
+                                >
+                                    <option value="confirmed">Confirmado</option>
+                                    <option value="production">Em Produção</option>
+                                    <option value="ready">Pronto p/ Entrega</option>
+                                    <option value="delivered">Entregue</option>
+                                    <option value="difficult_delivery">Dificuldade na Entrega</option>
+                                    <option value="delivered_unpaid">Entregue (Não Pago)</option>
+                                </select>
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsOrder(false); setOrderStatus('draft'); }}
+                                    className="h-10 w-10 flex items-center justify-center bg-rose-50 text-rose-500 rounded-lg border border-rose-200 hover:bg-rose-100 transition"
+                                    title="Reverter para Orçamento"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center bg-slate-50 p-2.5 rounded-lg border border-slate-100 h-10">
+                                <input
+                                    id="is_order_toggle"
+                                    type="checkbox"
+                                    className="w-4 h-4 text-primary-600 rounded border-slate-300 focus:ring-primary-500"
+                                    checked={isOrder}
+                                    onChange={e => setIsOrder(e.target.checked)}
+                                />
+                                <label htmlFor="is_order_toggle" className="ml-2 text-[10px] font-black text-slate-600 uppercase cursor-pointer">Salvar como Pedido</label>
+                            </div>
+                        )}
                     </div>
 
                     <div className="md:col-span-3 text-right bg-slate-900 text-white p-2.5 rounded-lg shadow-inner">
