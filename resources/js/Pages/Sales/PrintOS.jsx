@@ -78,8 +78,11 @@ export default function PrintOS() {
                upper.includes('A VISTA');
     };
 
-    return (
-        <div className="bg-white p-6 print:p-0 text-slate-800 font-sans max-w-[800px] mx-auto border shadow-sm print:shadow-none print:border-none print:max-w-none print:w-full text-xs">
+    const OrderContent = ({ copyTitle, showProductionControl = false }) => (
+        <div className="flex-1 flex flex-col p-4 print:p-3 bg-white text-xs w-full overflow-hidden">
+            <div className="text-center font-black text-[9px] uppercase tracking-widest text-slate-400 border-b border-dashed border-slate-300 pb-1 mb-2">
+                {copyTitle}
+            </div>
             {/* CABEÇALHO DA EMPRESA */}
             <div className="flex justify-between items-start border-b-2 border-slate-900 pb-2.5 mb-3">
                 <div>
@@ -341,8 +344,25 @@ export default function PrintOS() {
                 </div>
             )}
 
+            {/* CONTROLE DE PRODUÇÃO E ARMAZENAMENTO */}
+            {showProductionControl && (
+                <div className="mb-2 border border-slate-300 rounded p-1.5 bg-slate-50">
+                    <p className="text-[8px] font-black uppercase text-slate-900 border-b border-slate-200 pb-0.5 mb-1.5">Controle de Produção (Localização)</p>
+                    <div className="flex justify-between gap-4">
+                        <div className="flex-1">
+                            <span className="text-[8px] font-bold text-slate-700">Entrada (Material): </span>
+                            <span className="inline-block border-b border-slate-400 w-[60%] h-3"></span>
+                        </div>
+                        <div className="flex-1">
+                            <span className="text-[8px] font-bold text-slate-700">Saída (Pronto): </span>
+                            <span className="inline-block border-b border-slate-400 w-[65%] h-3"></span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ASSINATURAS */}
-            <div className="mt-6 mb-2 grid grid-cols-2 gap-10">
+            <div className="mt-4 mb-2 grid grid-cols-2 gap-10">
                 <div className="text-center">
                     <div className="border-t-2 border-slate-900 pt-1.5 mx-4">
                         <p className="text-[11px] font-black uppercase text-slate-700">{order.customer?.name}</p>
@@ -371,12 +391,38 @@ export default function PrintOS() {
                     Imprimir Documento
                 </button>
             </div>
+        </div>
+    );
+
+    return (
+        <div className="w-full bg-white print:bg-white text-slate-800 font-sans flex flex-col items-center">
+            {/* CONTAINER ESPELHADO */}
+            <div className="flex w-full print:w-full print:max-w-full">
+                {/* 1ª Via - Cliente / Loja */}
+                <div className="w-1/2 border-r border-dashed border-slate-400 print:h-full pr-3">
+                    <OrderContent copyTitle="1ª Via - Loja / Cliente" />
+                </div>
+                {/* 2ª Via - Produção / Moldurista */}
+                <div className="w-1/2 print:h-full pl-3">
+                    <OrderContent copyTitle="2ª Via - Produção / Moldurista" showProductionControl={true} />
+                </div>
+            </div>
+
+            {/* BOTÃO DE IMPRESSÃO */}
+            <div className="mt-6 flex justify-center no-print pb-6">
+                <button 
+                    onClick={() => window.print()}
+                    className="bg-slate-900 text-white px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition shadow-lg"
+                >
+                    Imprimir Documento
+                </button>
+            </div>
 
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
                     @page {
-                        size: A4 portrait;
-                        margin: 6mm 8mm;
+                        size: A4 landscape;
+                        margin: 5mm;
                     }
                     html, body {
                         background: white !important;

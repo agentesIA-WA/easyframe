@@ -29,7 +29,7 @@ export default function SettleOrderModal({ isOpen, onClose, order, onSuccess, no
     const totalValue = parseFloat(order.total_value || order.total_sales || 0);
 
     const alreadyAllocated = (order.payments || []).reduce((acc, p) => {
-        if (p.status === 'C' || p.status === 'CANCELADO') return acc;
+        if (p.status !== 'P') return acc;
         
         const pm = paymentMethods.find(m => 
             (p.payment_method_id && m.id == p.payment_method_id) || 

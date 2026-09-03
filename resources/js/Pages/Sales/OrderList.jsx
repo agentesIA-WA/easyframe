@@ -27,7 +27,10 @@ export default function OrderList() {
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: 'primary', title: '', message: '', onConfirm: null });
 
     // Estado para Modal de Início de Produção (Selecionar Moldurista)
-    const [productionModal, setProductionModal] = useState({ isOpen: false, orderId: null, framerId: '' });
+    const [productionModal, setProductionModal] = useState({ isOpen: false, orderId: null, framerId: '', storageLocation: '' });
+
+    // Estado para Modal de Fim de Produção (Pronto)
+    const [readyModal, setReadyModal] = useState({ isOpen: false, orderId: null, storageLocation: '' });
 
     // Estado para Modal de Registro de Entrega
     const [deliveryModal, setDeliveryModal] = useState({ isOpen: false, orderId: null, date: new Date().toISOString().split('T')[0], observation: '' });
@@ -103,8 +106,14 @@ export default function OrderList() {
         }
 
         if (nextStatus === 'production') {
-            // Se vai para produção, abre o modal para escolher o moldurista
-            setProductionModal({ isOpen: true, orderId: id, framerId: '' });
+            // Se vai para produção, abre o modal para escolher o moldurista e o local de armazenamento
+            setProductionModal({ isOpen: true, orderId: id, framerId: '', storageLocation: '' });
+            return;
+        }
+
+        if (nextStatus === 'ready') {
+            // Se vai para pronto, abre o modal para informar o local de armazenamento final
+            setReadyModal({ isOpen: true, orderId: id, storageLocation: '' });
             return;
         }
 
@@ -143,17 +152,41 @@ export default function OrderList() {
             notify('warning', 'Selecione um funcionário/moldurista responsável.');
             return;
         }
+        if (!productionModal.storageLocation) {
+            notify('warning', 'Informe o local de armazenamento do material.');
+            return;
+        }
 
         try {
             await axios.patch(`/api/v1/sales/orders/${productionModal.orderId}/status`, {
                 status: 'production',
-                framer_id: productionModal.framerId
+                framer_id: productionModal.framerId,
+                storage_location: productionModal.storageLocation
             });
             notify('success', 'Pedido enviado para produção com sucesso!');
-            setProductionModal({ isOpen: false, orderId: null, framerId: '' });
+            setProductionModal({ isOpen: false, orderId: null, framerId: '', storageLocation: '' });
             fetchOrders();
         } catch (error) {
             notify('error', 'Erro ao enviar para produção.');
+        }
+    };
+
+    const handleFinishProduction = async () => {
+        if (!readyModal.storageLocation) {
+            notify('warning', 'Informe o local de armazenamento do material finalizado.');
+            return;
+        }
+
+        try {
+            await axios.patch(`/api/v1/sales/orders/${readyModal.orderId}/status`, {
+                status: 'ready',
+                storage_location: readyModal.storageLocation
+            });
+            notify('success', 'Pedido marcado como Pronto com sucesso!');
+            setReadyModal({ isOpen: false, orderId: null, storageLocation: '' });
+            fetchOrders();
+        } catch (error) {
+            notify('error', 'Erro ao atualizar status.');
         }
     };
 
@@ -322,6 +355,16 @@ export default function OrderList() {
                                     )}
                                 </select>
                             </div>
+                            <div>
+                                <label className="block text-xs font-black uppercase text-slate-400 mb-2 tracking-widest">Local de Armazenamento (Entrada)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Ex: Estante A, Prateleira 2"
+                                    className="w-full border-slate-200 rounded-xl focus:border-primary-500 focus:ring-primary-500 text-sm font-medium h-12 bg-slate-50"
+                                    value={productionModal.storageLocation}
+                                    onChange={e => setProductionModal({ ...productionModal, storageLocation: e.target.value })}
+                                />
+                            </div>
                         </div>
                         <div className="px-6 py-4 bg-slate-50 flex justify-end space-x-3">
                             <button
@@ -335,6 +378,46 @@ export default function OrderList() {
                                 className="px-5 py-2.5 text-xs font-black uppercase tracking-widest bg-primary-600 text-white rounded-xl shadow-xl shadow-primary-500/30 hover:bg-primary-700 transition"
                             >
                                 Iniciar Produção
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Fim de Produção (Pronto) */}
+            {readyModal.isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-[slideUp_0.3s_ease-out]">
+                        <div className="bg-green-600 px-6 py-4 flex justify-between items-center">
+                            <h2 className="text-white font-black text-lg uppercase tracking-widest">Finalizar Produção</h2>
+                            <button onClick={() => setReadyModal({ isOpen: false, orderId: null, storageLocation: '' })} className="text-white/70 hover:text-white transition">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div>
+                                <label className="block text-xs font-black uppercase text-slate-400 mb-2 tracking-widest">Local de Armazenamento (Saída)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Ex: Prateleira de Prontos"
+                                    className="w-full border-slate-200 rounded-xl focus:border-green-500 focus:ring-green-500 text-sm font-medium h-12 bg-slate-50"
+                                    value={readyModal.storageLocation}
+                                    onChange={e => setReadyModal({ ...readyModal, storageLocation: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="px-6 py-4 bg-slate-50 flex justify-end space-x-3">
+                            <button
+                                onClick={() => setReadyModal({ isOpen: false, orderId: null, storageLocation: '' })}
+                                className="px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-200 rounded-xl transition"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleFinishProduction}
+                                className="px-5 py-2.5 text-xs font-black uppercase tracking-widest bg-green-600 text-white rounded-xl shadow-xl shadow-green-500/30 hover:bg-green-700 transition"
+                            >
+                                Marcar como Pronto
                             </button>
                         </div>
                     </div>
@@ -623,6 +706,7 @@ export default function OrderList() {
                     { key: 'customer', label: 'Cliente', render: (val) => val ? val.name : '-' },
                     { key: 'seller', label: 'Vendedor', render: (val) => val ? val.name : '-' },
                     { key: 'framer', label: 'Moldurista', render: (val) => val ? val.name : 'Não atribuído' },
+                    { key: 'storage_location', label: 'Local de Armazenamento', render: (val) => val || 'Não informado' },
                     { key: 'status', label: 'Status', render: (val) => getStatusBadge(val) },
                     { key: 'total_value', label: 'Valor Total', render: (val) => `R$ ${parseFloat(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
                     { 

@@ -501,7 +501,8 @@ class OrderController extends Controller
             'delivered_at' => 'nullable|date',
             'delivery_observation' => 'nullable|string',
             'is_force_status' => 'nullable|boolean',
-            'admin_password' => 'nullable|string'
+            'admin_password' => 'nullable|string',
+            'storage_location' => 'nullable|string|max:255'
         ]);
 
         $updateData = ['status' => $request->status];
@@ -538,13 +539,18 @@ class OrderController extends Controller
             $updateData['framer_id'] = $request->framer_id;
         }
 
+        // Capturar o local físico do material/pedido
+        if (in_array($request->status, ['production', 'ready']) && $request->has('storage_location')) {
+            $updateData['storage_location'] = $request->storage_location;
+        }
+
         // Se estiver sendo entregue normalmente (não forçado), valida o pagamento e salva dados da entrega
         if (!$request->boolean('is_force_status') && $request->status === 'delivered') {
             $existingPayments = $order->payments;
             $placeholderMethods = \App\Modules\Core\Models\PaymentMethod::where('is_placeholder', true)->pluck('description')->map(fn($m) => mb_strtoupper($m))->toArray();
 
             $alreadyAllocated = $existingPayments->reduce(function($acc, $p) use ($placeholderMethods) {
-                if ($p->status === 'C' || $p->status === 'CANCELADO') {
+                if ($p->status !== 'P') {
                     return $acc;
                 }
                 if ($p->payment_method && in_array(mb_strtoupper($p->payment_method), $placeholderMethods)) {
@@ -612,7 +618,7 @@ class OrderController extends Controller
         $placeholderMethods = \App\Modules\Core\Models\PaymentMethod::where('is_placeholder', true)->pluck('description')->map(fn($m) => mb_strtoupper($m))->toArray();
 
         $alreadyAllocated = $existingPayments->reduce(function($acc, $p) use ($placeholderMethods) {
-            if ($p->status === 'C' || $p->status === 'CANCELADO') {
+            if ($p->status !== 'P') {
                 return $acc;
             }
             if ($p->payment_method && in_array(mb_strtoupper($p->payment_method), $placeholderMethods)) {
@@ -671,11 +677,9 @@ class OrderController extends Controller
                     ]
                 ]);
             } else {
-                // Remove parcelas que são marcadas como placeholder (ex: A Pagar na Entrega),
-                // pois elas não valem como recebíveis e serão substituídas pela baixa real.
-                $order->payments()->get()->filter(function($p) use ($placeholderMethods) {
-                    return in_array(mb_strtoupper($p->payment_method), $placeholderMethods);
-                })->each->delete();
+                // Remove parcelas que não estão pagas, pois elas serão
+                // substituídas pelas novas parcelas (com status P) inseridas na baixa real.
+                $order->payments()->where('status', '!=', 'P')->delete();
 
             if ($remainingBalance > 0.01) {
                 $paymentList = [];
