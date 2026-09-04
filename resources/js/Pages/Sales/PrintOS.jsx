@@ -78,14 +78,11 @@ export default function PrintOS() {
                upper.includes('A VISTA');
     };
 
-    const OrderContent = ({ copyTitle, showProductionControl = false }) => (
+    const OrderContent = ({ showProductionControl = false }) => (
         <div className="flex-1 flex flex-col p-4 print:p-3 bg-white text-xs w-full overflow-hidden">
-            <div className="text-center font-black text-[9px] uppercase tracking-widest text-slate-400 border-b border-dashed border-slate-300 pb-1 mb-2">
-                {copyTitle}
-            </div>
-            {/* CABEÇALHO DA EMPRESA */}
-            <div className="flex justify-between items-start border-b-2 border-slate-900 pb-2.5 mb-3">
-                <div>
+            {/* CABEÇALHO DA EMPRESA E INFORMAÇÕES DO PEDIDO */}
+            <div className="flex justify-between items-start border-b-2 border-slate-900 pb-2.5 mb-3 gap-4">
+                <div className="flex-1">
                     <div className="bg-slate-900 px-2.5 py-1 rounded inline-block mb-1">
                         <img src="/logo.png" alt="EASY FRAME Logo" className="h-7 w-auto object-contain" />
                     </div>
@@ -97,10 +94,47 @@ export default function PrintOS() {
                         <p>FONE: {settings.phone} | EMAIL: {settings.email}</p>
                     </div>
                 </div>
-                <div className="text-right">
-                    <h2 className="text-base font-black uppercase">Ordem de Serviço</h2>
-                    <p className="text-base font-mono font-bold text-indigo-700">ORD-{order.id}</p>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase">Data: {formatDateTime(order.created_at)}</p>
+
+                <div className="w-[300px] flex flex-col shrink-0">
+                    <div className="text-right mb-1.5">
+                        <h2 className="text-lg font-black uppercase leading-none">Ordem de Serviço</h2>
+                        <p className="text-lg font-mono font-black text-indigo-700 leading-tight">ORD-{order.id}</p>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">Emissão: {formatDateTime(order.created_at)}</p>
+                    </div>
+
+                    <div className="border border-amber-400 rounded p-1.5 bg-amber-50 flex items-center justify-end gap-2 mb-1.5 print:bg-amber-50">
+                        <div className="w-5 h-5 rounded bg-amber-500 text-white flex items-center justify-center shrink-0 print:bg-amber-500">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <div className="text-right flex-1 flex flex-col items-end">
+                            <p className="text-[7px] font-black uppercase text-amber-700 tracking-widest leading-none mb-0.5">Previsão de Entrega</p>
+                            {order.delivery_date ? (
+                                <p className="text-[11px] font-black text-amber-900 leading-none">
+                                    {formatLongDateTime(order.delivery_date)}
+                                </p>
+                            ) : (
+                                <p className="text-[9px] font-bold text-amber-700/60 leading-none uppercase">Não Definida</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {showProductionControl && (
+                        <div className="border border-slate-300 rounded p-1.5 bg-slate-50 print:bg-slate-50">
+                            <p className="text-[8px] font-black uppercase text-slate-900 border-b border-slate-200 pb-0.5 mb-1.5 text-right">Controle de Produção (Localização)</p>
+                            <div className="flex flex-col gap-1">
+                                <div className="flex justify-between items-end">
+                                    <span className="text-[8px] font-bold text-slate-700">Entrada (Material): </span>
+                                    <span className="inline-block border-b border-slate-400 w-[60%] h-2"></span>
+                                </div>
+                                <div className="flex justify-between items-end">
+                                    <span className="text-[8px] font-bold text-slate-700">Saída (Pronto): </span>
+                                    <span className="inline-block border-b border-slate-400 w-[60%] h-2"></span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -323,43 +357,7 @@ export default function PrintOS() {
                 );
             })()}
 
-            {/* PREVISÃO DE ENTREGA — EM DESTAQUE */}
-            {order.delivery_date && (
-                <div className="mb-4 border-2 border-amber-400 rounded-lg p-2.5 bg-amber-50">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center print:bg-amber-500">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-[8px] font-black uppercase text-amber-700 tracking-widest">Previsão de Entrega</p>
-                                <p className="text-sm font-black text-amber-900">
-                                    {formatLongDateTime(order.delivery_date)}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
-            {/* CONTROLE DE PRODUÇÃO E ARMAZENAMENTO */}
-            {showProductionControl && (
-                <div className="mb-2 border border-slate-300 rounded p-1.5 bg-slate-50">
-                    <p className="text-[8px] font-black uppercase text-slate-900 border-b border-slate-200 pb-0.5 mb-1.5">Controle de Produção (Localização)</p>
-                    <div className="flex justify-between gap-4">
-                        <div className="flex-1">
-                            <span className="text-[8px] font-bold text-slate-700">Entrada (Material): </span>
-                            <span className="inline-block border-b border-slate-400 w-[60%] h-3"></span>
-                        </div>
-                        <div className="flex-1">
-                            <span className="text-[8px] font-bold text-slate-700">Saída (Pronto): </span>
-                            <span className="inline-block border-b border-slate-400 w-[65%] h-3"></span>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* ASSINATURAS */}
             <div className="mt-4 mb-2 grid grid-cols-2 gap-10">
@@ -377,34 +375,16 @@ export default function PrintOS() {
                 </div>
             </div>
 
-            {/* RODAPÉ */}
-            <div className="mt-2 text-center">
-                <p className="text-[7px] text-slate-400 font-bold uppercase">Documento gerado em {formatDateTime(new Date())}</p>
-            </div>
 
-            {/* BOTÃO DE IMPRESSÃO */}
-            <div className="mt-6 flex justify-center no-print">
-                <button 
-                    onClick={() => window.print()}
-                    className="bg-slate-900 text-white px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition shadow-lg"
-                >
-                    Imprimir Documento
-                </button>
-            </div>
+
         </div>
     );
 
     return (
-        <div className="w-full bg-white print:bg-white text-slate-800 font-sans flex flex-col items-center">
-            {/* CONTAINER ESPELHADO */}
+        <div className="w-full max-w-4xl mx-auto bg-white print:bg-white text-slate-800 font-sans flex flex-col items-center">
             <div className="flex w-full print:w-full print:max-w-full">
-                {/* 1ª Via - Cliente / Loja */}
-                <div className="w-1/2 border-r border-dashed border-slate-400 print:h-full pr-3">
-                    <OrderContent copyTitle="1ª Via - Loja / Cliente" />
-                </div>
-                {/* 2ª Via - Produção / Moldurista */}
-                <div className="w-1/2 print:h-full pl-3">
-                    <OrderContent copyTitle="2ª Via - Produção / Moldurista" showProductionControl={true} />
+                <div className="w-full print:h-full">
+                    <OrderContent showProductionControl={true} />
                 </div>
             </div>
 
@@ -421,8 +401,8 @@ export default function PrintOS() {
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
                     @page {
-                        size: A4 landscape;
-                        margin: 5mm;
+                        size: A4 portrait;
+                        margin: 10mm;
                     }
                     html, body {
                         background: white !important;
